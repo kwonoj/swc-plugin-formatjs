@@ -22,8 +22,10 @@ fn read_sections(file: PathBuf) -> TestFixtureSections {
     }
 }
 
-#[fixture("tests/fixtures/date_arg_skeleton_with_jjj")]
+#[fixture("tests/fixtures/date_arg_skeleton_1")]
 fn parser_tests(file: PathBuf) {
     let fixture_sections = read_sections(file);
     let parser = Parser::new(&fixture_sections.message, None);
+
+    println!("{:#?}", fixture_sections);
 }

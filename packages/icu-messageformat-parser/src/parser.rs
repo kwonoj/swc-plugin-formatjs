@@ -22,29 +22,34 @@ pub struct ParserOptions {
     /// instead of parsing them as tag token.
     /// When this is false we only allow simple tags without
     /// any attributes
-    pub ignore_tag: Option<bool>,
+    #[serde(default)]
+    pub ignore_tag: bool,
 
     /// Should `select`, `selectordinal`, and `plural` arguments always include
     /// the `other` case clause.
-    requires_other_clause: Option<bool>,
+    #[serde(default)]
+    requires_other_clause: bool,
 
     /// Whether to parse number/datetime skeleton
     /// into Intl.NumberFormatOptions and Intl.DateTimeFormatOptions, respectively
-    should_parse_skeletons: Option<bool>,
+    #[serde(default)]
+    should_parse_skeletons: bool,
 
     /// Capture location info in AST
     /// Default is false
-    capture_location: Option<bool>,
+    #[serde(default)]
+    capture_location: bool,
 
     /// Instance of Intl.Locale to resolve locale-dependent skeleton
+    #[serde(default)]
     locale: Option<String>,
 }
 
 pub const DEFAULT_PARSER_OPTIONS: &ParserOptions = &ParserOptions {
-    ignore_tag: None,
-    requires_other_clause: None,
-    should_parse_skeletons: None,
-    capture_location: None,
+    ignore_tag: false,
+    requires_other_clause: false,
+    should_parse_skeletons: false,
+    capture_location: false,
     locale: None,
 };
 
@@ -58,7 +63,7 @@ impl<'s> Parser<'s> {
                 line: 1,
                 column: 1,
             }),
-            should_ignore_tag: options.ignore_tag.unwrap_or(false),
+            should_ignore_tag: options.ignore_tag,
         }
     }
 
