@@ -12,10 +12,10 @@ type Result<T> = result::Result<T, ast::Error>;
 pub struct Parser<'s> {
     position: Cell<Position>,
     message: &'s str,
-    should_ignore_tag: bool,
+    options: ParserOptions,
 }
 
-#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Default, Debug, Eq, PartialEq, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ParserOptions {
     /// Whether to treat HTML/XML tags as string literal
@@ -45,17 +45,8 @@ pub struct ParserOptions {
     locale: Option<String>,
 }
 
-pub const DEFAULT_PARSER_OPTIONS: &ParserOptions = &ParserOptions {
-    ignore_tag: false,
-    requires_other_clause: false,
-    should_parse_skeletons: false,
-    capture_location: false,
-    locale: None,
-};
-
 impl<'s> Parser<'s> {
-    pub fn new(message: &'s str, options: Option<&ParserOptions>) -> Parser<'s> {
-        let options = options.unwrap_or(DEFAULT_PARSER_OPTIONS);
+    pub fn new(message: &'s str, options: &ParserOptions) -> Parser<'s> {
         Parser {
             message,
             position: Cell::new(Position {
@@ -63,7 +54,7 @@ impl<'s> Parser<'s> {
                 line: 1,
                 column: 1,
             }),
-            should_ignore_tag: options.ignore_tag,
+            options: options.clone()
         }
     }
 
@@ -98,7 +89,7 @@ impl<'s> Parser<'s> {
                     self.bump();
                     AstElement::Pound(Span::new(position, self.position()))
                 }
-                '<' if !self.should_ignore_tag && self.peek() == Some('/') => {
+                '<' if !self.options.ignore_tag && self.peek() == Some('/') => {
                     if expecting_close_tag {
                         break;
                     } else {
@@ -108,7 +99,7 @@ impl<'s> Parser<'s> {
                         ));
                     }
                 }
-                '<' if !self.should_ignore_tag && matches!(self.peek(), Some('a'..='z')) => {
+                '<' if !self.options.ignore_tag && matches!(self.peek(), Some('a'..='z')) => {
                     self.parse_tag(nesting_level, parent_arg_type)?
                 }
                 _ => self.parse_literal(nesting_level, parent_arg_type)?,
@@ -295,7 +286,7 @@ impl<'s> Parser<'s> {
     fn try_parse_left_angle_bracket(&self) -> Option<char> {
         if !self.is_eof()
             && self.char() == '<'
-            && (self.should_ignore_tag
+            && (self.options.ignore_tag
                 // If at the opening tag or closing tag position, bail.
                 || !(matches!(self.peek(), Some(c) if c.is_ascii_lowercase() || c == '/')))
         {

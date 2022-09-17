@@ -143,7 +143,7 @@ fn parser_tests(file: PathBuf) {
     let fixture_sections = read_sections(file);
     let mut parser = Parser::new(
         &fixture_sections.message,
-        Some(&fixture_sections.snapshot_options),
+        &fixture_sections.snapshot_options,
     );
 
     let parsed_result = parser.parse();
