@@ -4,4 +4,4 @@ mod parser;
 mod pattern_syntax;
 
 pub use ast::{Ast, AstElement, Position, Span};
-pub use parser::Parser;
+pub use parser::{Parser, ParserOptions};

@@ -1,5 +1,6 @@
 use crate::ast::{self, *};
 use crate::pattern_syntax::is_pattern_syntax;
+use serde::{Deserialize, Serialize};
 use std::cell::Cell;
 use std::cmp;
 use std::collections::HashSet;
@@ -14,20 +15,50 @@ pub struct Parser<'s> {
     should_ignore_tag: bool,
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ParserOptions {
-    pub should_ignore_tag: bool,
+    /// Whether to treat HTML/XML tags as string literal
+    /// instead of parsing them as tag token.
+    /// When this is false we only allow simple tags without
+    /// any attributes
+    pub ignore_tag: Option<bool>,
+
+    /// Should `select`, `selectordinal`, and `plural` arguments always include
+    /// the `other` case clause.
+    requires_other_clause: Option<bool>,
+
+    /// Whether to parse number/datetime skeleton
+    /// into Intl.NumberFormatOptions and Intl.DateTimeFormatOptions, respectively
+    should_parse_skeletons: Option<bool>,
+
+    /// Capture location info in AST
+    /// Default is false
+    capture_location: Option<bool>,
+
+    /// Instance of Intl.Locale to resolve locale-dependent skeleton
+    locale: Option<String>,
 }
 
-pub const DEFAULT_PARSER_OPTIONS: &ParserOptions = &ParserOptions { should_ignore_tag: false };
+pub const DEFAULT_PARSER_OPTIONS: &ParserOptions = &ParserOptions {
+    ignore_tag: None,
+    requires_other_clause: None,
+    should_parse_skeletons: None,
+    capture_location: None,
+    locale: None,
+};
 
 impl<'s> Parser<'s> {
     pub fn new(message: &'s str, options: Option<&ParserOptions>) -> Parser<'s> {
         let options = options.unwrap_or(DEFAULT_PARSER_OPTIONS);
         Parser {
             message,
-            position: Cell::new(Position { offset: 0, line: 1, column: 1 }),
-            should_ignore_tag: options.should_ignore_tag,
+            position: Cell::new(Position {
+                offset: 0,
+                line: 1,
+                column: 1,
+            }),
+            should_ignore_tag: options.ignore_tag.unwrap_or(false),
         }
     }
 
@@ -149,10 +180,16 @@ impl<'s> Parser<'s> {
                     children: Box::new(children),
                 })
             } else {
-                Err(self.error(ErrorKind::UnclosedTag, Span::new(start_position, self.position())))
+                Err(self.error(
+                    ErrorKind::UnclosedTag,
+                    Span::new(start_position, self.position()),
+                ))
             }
         } else {
-            Err(self.error(ErrorKind::InvalidTag, Span::new(start_position, self.position())))
+            Err(self.error(
+                ErrorKind::InvalidTag,
+                Span::new(start_position, self.position()),
+            ))
         }
     }
 
@@ -453,9 +490,21 @@ impl<'s> Parser<'s> {
                 } else {
                     // No style
                     Ok(match arg_type {
-                        "number" => AstElement::Number { value, span, style: None },
-                        "date" => AstElement::Date { value, span, style: None },
-                        _ => AstElement::Time { value, span, style: None },
+                        "number" => AstElement::Number {
+                            value,
+                            span,
+                            style: None,
+                        },
+                        "date" => AstElement::Date {
+                            value,
+                            span,
+                            style: None,
+                        },
+                        _ => AstElement::Time {
+                            value,
+                            span,
+                            style: None,
+                        },
                     })
                 }
             }
@@ -517,7 +566,11 @@ impl<'s> Parser<'s> {
 
                 let span = Span::new(opening_brace_position, self.position());
                 match arg_type {
-                    "select" => Ok(AstElement::Select { value, span, options }),
+                    "select" => Ok(AstElement::Select {
+                        value,
+                        span,
+                        options,
+                    }),
                     _ => Ok(AstElement::Plural {
                         value,
                         span,
@@ -680,7 +733,10 @@ impl<'s> Parser<'s> {
             return Err(self.error(expect_number_error, span));
         }
 
-        digits.parse::<i64>().map(|x| x * sign).map_err(|_| self.error(invalid_number_error, span))
+        digits
+            .parse::<i64>()
+            .map(|x| x * sign)
+            .map_err(|_| self.error(invalid_number_error, span))
     }
 
     /// See: https://github.com/unicode-org/icu/blob/af7ed1f6d2298013dc303628438ec4abe1f16479/icu4c/source/common/messagepattern.cpp#L659
@@ -756,11 +812,18 @@ impl<'s> Parser<'s> {
         let end_position = self.position();
         let span = Span::new(starting_position, end_position);
 
-        (&self.message[starting_position.offset..end_position.offset], span)
+        (
+            &self.message[starting_position.offset..end_position.offset],
+            span,
+        )
     }
 
     fn error(&self, kind: ErrorKind, span: Span) -> ast::Error {
-        ast::Error { kind, message: self.message.to_string(), span }
+        ast::Error {
+            kind,
+            message: self.message.to_string(),
+            span,
+        }
     }
 
     fn offset(&self) -> usize {
@@ -778,7 +841,10 @@ impl<'s> Parser<'s> {
     ///
     /// This panics if the given position does not point to a valid char.
     fn char_at(&self, i: usize) -> char {
-        self.message[i..].chars().next().unwrap_or_else(|| panic!("expected char at offset {}", i))
+        self.message[i..]
+            .chars()
+            .next()
+            .unwrap_or_else(|| panic!("expected char at offset {}", i))
     }
 
     /// Bump the parser to the next Unicode scalar value.
@@ -786,7 +852,11 @@ impl<'s> Parser<'s> {
         if self.is_eof() {
             return;
         }
-        let Position { mut offset, mut line, mut column } = self.position();
+        let Position {
+            mut offset,
+            mut line,
+            mut column,
+        } = self.position();
         let ch = self.char();
         if ch == '\n' {
             line = line.checked_add(1).unwrap();
@@ -795,7 +865,11 @@ impl<'s> Parser<'s> {
             column = column.checked_add(1).unwrap();
         }
         offset += ch.len_utf8();
-        self.position.set(Position { offset, line, column });
+        self.position.set(Position {
+            offset,
+            line,
+            column,
+        });
     }
 
     /// Bump the parser to the target offset.
@@ -871,7 +945,9 @@ impl<'s> Parser<'s> {
         if self.is_eof() {
             return None;
         }
-        self.message[self.offset() + self.char().len_utf8()..].chars().next()
+        self.message[self.offset() + self.char().len_utf8()..]
+            .chars()
+            .next()
     }
 
     /// Returns true if the next call to `bump` would return false.
@@ -904,7 +980,10 @@ fn parse_number_skeleton_from_string(
                         }
                     })
                     .collect();
-                Ok(NumberSkeletonToken { stem, options: options? })
+                Ok(NumberSkeletonToken {
+                    stem,
+                    options: options?,
+                })
             } else {
                 Err(ErrorKind::InvalidNumberSkeleton)
             }

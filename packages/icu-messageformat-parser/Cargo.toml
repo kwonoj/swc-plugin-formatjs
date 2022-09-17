@@ -10,3 +10,4 @@ serde = { version = "1.0.144", features = ["derive"] }
 
 [dev-dependencies]
 testing = "0.30.8"
+serde_json              = "1.0.83"

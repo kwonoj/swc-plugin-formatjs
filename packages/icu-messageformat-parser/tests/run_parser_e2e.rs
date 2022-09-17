@@ -1,12 +1,12 @@
 #![allow(non_snake_case)]
+use icu_messageformat_parser::{Parser, ParserOptions};
 use std::{fs, path::PathBuf};
-use icu_messageformat_parser::Parser;
 use testing::fixture;
 
 #[derive(Debug)]
 struct TestFixtureSections {
     message: String,
-    snapshot_options: String,
+    snapshot_options: ParserOptions,
     expected: String,
 }
 
@@ -17,11 +17,10 @@ fn read_sections(file: PathBuf) -> TestFixtureSections {
 
     TestFixtureSections {
         message: input.get(0).expect("").to_string(),
-        snapshot_options: input.get(1).expect("").to_string(),
+        snapshot_options: serde_json::from_str(input.get(1).expect("")).expect("Should able to deserialize options"),
         expected: input.get(2).expect("").to_string(),
     }
 }
-
 
 #[fixture("tests/fixtures/date_arg_skeleton_with_jjj")]
 fn parser_tests(file: PathBuf) {
