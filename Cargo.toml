@@ -1,0 +1,9 @@
+[workspace]
+exclude = ["spec/swc-formatjs-custom-transform"]
+members = [
+  "packages/swc-plugin-formatjs",
+  "packages/swc-formatjs-visitor"
+]
+
+[profile.release]
+lto = true

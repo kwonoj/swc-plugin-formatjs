@@ -1,0 +1,14 @@
+[package]
+authors     = ["OJ Kwon <kwon.ohjoong@gmail.com>"]
+description = "formatjs custom transform visitor for SWC"
+edition     = "2021"
+license     = "MIT"
+name        = "swc-formatjs-visitor"
+repository  = "https://github.com/kwonoj/swc-plugin-formatjs"
+version     = "0.0.1"
+
+[dependencies]
+swc_core                = { version = "0.23.13", features = ["common"] }
+
+[dev-dependencies]
+pretty_assertions = "1.3.0"
