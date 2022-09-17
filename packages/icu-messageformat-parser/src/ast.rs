@@ -5,68 +5,69 @@ use serde_repr::Serialize_repr;
 use std::fmt;
 
 /// The type of an error that occurred while building an AST.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize_repr)]
+#[repr(u8)]
 pub enum ErrorKind {
     /// Argument is unclosed (e.g. `{0`)
-    ExpectArgumentClosingBrace,
+    ExpectArgumentClosingBrace = 1,
     /// Argument is empty (e.g. `{}`).
-    EmptyArgument,
+    EmptyArgument = 2,
     /// Argument is malformed (e.g. `{foo!}``)
-    MalformedArgument,
+    MalformedArgument = 3,
     /// Expect an argument type (e.g. `{foo,}`)
-    ExpectArgumentType,
+    ExpectArgumentType = 4,
     /// Unsupported argument type (e.g. `{foo,foo}`)
-    InvalidArgumentType,
+    InvalidArgumentType = 5,
     /// Expect an argument style (e.g. `{foo, number, }`)
-    ExpectArgumentStyle,
+    ExpectArgumentStyle = 6,
     /// The number skeleton is invalid.
-    InvalidNumberSkeleton,
+    InvalidNumberSkeleton = 7,
     /// The date time skeleton is invalid.
-    InvalidDateTimeSkeleton,
+    InvalidDateTimeSkeleton = 8,
     /// Exepct a number skeleton following the `::` (e.g. `{foo, number, ::}`)
-    ExpectNumberSkeleton,
+    ExpectNumberSkeleton = 9,
     /// Exepct a date time skeleton following the `::` (e.g. `{foo, date, ::}`)
-    ExpectDateTimeSkeleton,
+    ExpectDateTimeSkeleton = 10,
     /// Unmatched apostrophes in the argument style (e.g. `{foo, number, 'test`)
-    UnclosedQuoteInArgumentStyle,
+    UnclosedQuoteInArgumentStyle = 11,
     /// Missing select argument options (e.g. `{foo, select}`)
-    ExpectSelectArgumentOptions,
+    ExpectSelectArgumentOptions = 12,
 
     /// Expecting an offset value in `plural` or `selectordinal` argument (e.g `{foo, plural, offset}`)
-    ExpectPluralArgumentOffsetValue,
+    ExpectPluralArgumentOffsetValue = 13,
     /// Offset value in `plural` or `selectordinal` is invalid (e.g. `{foo, plural, offset: x}`)
-    InvalidPluralArgumentOffsetValue,
+    InvalidPluralArgumentOffsetValue = 14,
 
     /// Expecting a selector in `select` argument (e.g `{foo, select}`)
-    ExpectSelectArgumentSelector,
+    ExpectSelectArgumentSelector = 15,
     /// Expecting a selector in `plural` or `selectordinal` argument (e.g `{foo, plural}`)
-    ExpectPluralArgumentSelector,
+    ExpectPluralArgumentSelector = 16,
 
     /// Expecting a message fragment after the `select` selector (e.g. `{foo, select, apple}`)
-    ExpectSelectArgumentSelectorFragment,
+    ExpectSelectArgumentSelectorFragment = 17,
     /// Expecting a message fragment after the `plural` or `selectordinal` selector
     /// (e.g. `{foo, plural, one}`)
-    ExpectPluralArgumentSelectorFragment,
+    ExpectPluralArgumentSelectorFragment = 18,
 
     /// Selector in `plural` or `selectordinal` is malformed (e.g. `{foo, plural, =x {#}}`)
-    InvalidPluralArgumentSelector,
+    InvalidPluralArgumentSelector = 19,
 
     /// Duplicate selectors in `plural` or `selectordinal` argument.
     /// (e.g. {foo, plural, one {#} one {#}})
-    DuplicatePluralArgumentSelector,
+    DuplicatePluralArgumentSelector = 20,
     /// Duplicate selectors in `select` argument.
     /// (e.g. {foo, select, apple {apple} apple {apple}})
-    DuplicateSelectArgumentSelector,
+    DuplicateSelectArgumentSelector = 21,
 
     /// Plural or select argument option must have `other` clause.
-    MissingOtherClause,
+    MissingOtherClause = 22,
 
     /// The tag is malformed. (e.g. `<bold!>foo</bold!>)
-    InvalidTag,
+    InvalidTag = 23,
     /// The closing tag does not match the opening tag. (e.g. `<bold>foo</italic>`)
-    UnmatchedClosingTag,
+    UnmatchedClosingTag = 24,
     /// The opening tag has unmatched closing tag. (e.g. `<bold>foo`)
-    UnclosedTag,
+    UnclosedTag = 25,
 }
 
 /// A single position in an ICU message.
@@ -129,7 +130,7 @@ pub struct Error {
     /// span in an error is a valid range into this string.
     pub message: String,
     /// The span of this error.
-    pub span: Span,
+    pub location: Span,
 }
 
 /// An abstract syntax tree for a ICU message. Adapted from:
@@ -288,8 +289,10 @@ pub enum NumberArgStyle<'s> {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NumberSkeleton<'s> {
+    #[serde(rename = "type")]
+    pub skeleton_type: SkeletonType,
     pub tokens: Vec<NumberSkeletonToken<'s>>,
-    pub span: Span,
+    pub location: Span,
     pub parsed_options: JsIntlNumberFormatOptions,
 }
 
@@ -339,10 +342,11 @@ mod tests {
 
     #[test]
     fn serialize_number_arg_style_with_skeleton() {
-        assert_eq!(
+        similar_asserts::assert_eq!(
             serde_json::to_value(NumberArgStyle::Skeleton(NumberSkeleton {
+                skeleton_type: SkeletonType::Number,
                 tokens: vec![NumberSkeletonToken { stem: "foo", options: vec!["bar", "baz"] }],
-                span: Span::new(Position::new(0, 1, 1), Position::new(11, 1, 12)),
+                location: Span::new(Position::new(0, 1, 1), Position::new(11, 1, 12)),
                 parsed_options: JsIntlNumberFormatOptions {},
             }))
             .unwrap(),
@@ -354,7 +358,7 @@ mod tests {
                         "baz"
                     ]
                 }],
-                "span": {
+                "location": {
                     "start": {
                         "offset": 0,
                         "line": 1,
@@ -366,6 +370,7 @@ mod tests {
                         "column": 12,
                     }
                 },
+                "type": 0,
                 "parsedOptions": {},
             })
         );
@@ -373,7 +378,7 @@ mod tests {
 
     #[test]
     fn serialize_number_arg_style_string() {
-        assert_eq!(
+        similar_asserts::assert_eq!(
             serde_json::to_value(NumberArgStyle::Style("percent")).unwrap(),
             json!("percent")
         )
@@ -381,6 +386,6 @@ mod tests {
 
     #[test]
     fn serialize_plural_type() {
-        assert_eq!(serde_json::to_value(PluralType::Cardinal).unwrap(), json!("cardinal"))
+        similar_asserts::assert_eq!(serde_json::to_value(PluralType::Cardinal).unwrap(), json!("cardinal"))
     }
 }

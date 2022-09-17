@@ -828,7 +828,7 @@ impl<'s> Parser<'s> {
         ast::Error {
             kind,
             message: self.message.to_string(),
-            span,
+            location: span,
         }
     }
 
@@ -997,9 +997,10 @@ fn parse_number_skeleton_from_string(
         .collect();
 
     Ok(NumberSkeleton {
+        skeleton_type: SkeletonType::Number,
         tokens: tokens?,
         // TODO: use trimmed end position
-        span,
+        location: span,
         // TODO
         parsed_options: Default::default(),
     })

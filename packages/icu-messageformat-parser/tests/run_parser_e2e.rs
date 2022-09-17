@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 use icu_messageformat_parser::{AstElement, Error, Parser, ParserOptions};
-use serde::{Serialize};
+use serde::Serialize;
 use std::{fs, path::PathBuf};
 use testing::fixture;
 
@@ -14,7 +14,7 @@ struct TestFixtureSections {
 #[derive(Debug, Eq, PartialEq, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct Snapshot<'a> {
-    val: Vec<AstElement<'a>>,
+    val: Option<Vec<AstElement<'a>>>,
     err: Option<Error>,
 }
 
@@ -31,8 +31,6 @@ fn read_sections<'a>(file: PathBuf) -> TestFixtureSections {
     }
 }
 
-#[fixture("tests/fixtures/date_arg_skeleton_2")]
-#[fixture("tests/fixtures/date_arg_skeleton_3")]
 #[fixture("tests/fixtures/date_arg_skeleton_with_capital_J")]
 #[fixture("tests/fixtures/date_arg_skeleton_with_capital_JJ")]
 #[fixture("tests/fixtures/date_arg_skeleton_with_j")]
@@ -51,7 +49,6 @@ fn read_sections<'a>(file: PathBuf) -> TestFixtureSections {
 #[fixture("tests/fixtures/expect_arg_format_1")]
 #[fixture("tests/fixtures/expect_number_arg_skeleton_token_1")]
 #[fixture("tests/fixtures/expect_number_arg_skeleton_token_option_1")]
-#[fixture("tests/fixtures/expect_number_arg_style_1")]
 #[fixture("tests/fixtures/ignore_tag_number_arg_1")]
 #[fixture("tests/fixtures/ignore_tags_1")]
 #[fixture("tests/fixtures/incomplete_nested_message_in_tag")]
@@ -72,9 +69,7 @@ fn read_sections<'a>(file: PathBuf) -> TestFixtureSections {
 #[fixture("tests/fixtures/not_quoted_string_1")]
 #[fixture("tests/fixtures/not_quoted_string_2")]
 #[fixture("tests/fixtures/not_self_closing_tag_1")]
-#[fixture("tests/fixtures/number_arg_skeleton_2")]
-#[fixture("tests/fixtures/number_arg_skeleton_3")]
-#[fixture("tests/fixtures/number_arg_style_1")]
+
 #[fixture("tests/fixtures/number_skeleton_1")]
 #[fixture("tests/fixtures/number_skeleton_10")]
 #[fixture("tests/fixtures/number_skeleton_11")]
@@ -139,6 +134,12 @@ fn tests_skipped(_file: PathBuf) {
 #[fixture("tests/fixtures/date_arg_skeleton_1")]
 #[fixture("tests/fixtures/basic_argument_1")]
 #[fixture("tests/fixtures/basic_argument_2")]
+#[fixture("tests/fixtures/date_arg_skeleton_2")]
+#[fixture("tests/fixtures/date_arg_skeleton_3")]
+#[fixture("tests/fixtures/number_arg_skeleton_2")]
+#[fixture("tests/fixtures/number_arg_skeleton_3")]
+#[fixture("tests/fixtures/number_arg_style_1")]
+#[fixture("tests/fixtures/expect_number_arg_style_1")]
 fn parser_tests(file: PathBuf) {
     let fixture_sections = read_sections(file);
     let mut parser = Parser::new(
@@ -149,15 +150,16 @@ fn parser_tests(file: PathBuf) {
     let parsed_result = parser.parse();
     let parsed_result_snapshot = match parsed_result {
         Ok(parsed_result) => Snapshot {
-            val: parsed_result,
+            val: Some(parsed_result),
             err: None,
         },
         Err(err) => Snapshot {
-            val: vec![],
+            val: None,
             err: Some(err),
         },
     };
 
-    let parsed_result_str = serde_json::to_string_pretty(&parsed_result_snapshot).expect("Should able to serialize parsed result");
+    let parsed_result_str = serde_json::to_string_pretty(&parsed_result_snapshot)
+        .expect("Should able to serialize parsed result");
     similar_asserts::assert_eq!(parsed_result_str, fixture_sections.expected);
 }
