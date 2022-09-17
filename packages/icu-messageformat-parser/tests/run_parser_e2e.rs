@@ -1,4 +1,6 @@
+#![allow(non_snake_case)]
 use std::{fs, path::PathBuf};
+use icu_messageformat_parser::Parser;
 use testing::fixture;
 
 #[derive(Debug)]
@@ -20,7 +22,9 @@ fn read_sections(file: PathBuf) -> TestFixtureSections {
     }
 }
 
+
 #[fixture("tests/fixtures/date_arg_skeleton_with_jjj")]
 fn parser_tests(file: PathBuf) {
-    let sections = read_sections(file);
+    let fixture_sections = read_sections(file);
+    let parser = Parser::new(&fixture_sections.message, None);
 }
