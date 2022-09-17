@@ -6,8 +6,8 @@ node_modules/
 *.node
 index.d.ts
 index.js
-spec/swc-vanilla-custom-transform/target/
+spec/swc-formatjs-custom-transform/target/
 a.js
-swc-plugin-vanilla-*.tgz
+swc-plugin-formatjs-*.tgz
 /tmp
 trace-*.json
