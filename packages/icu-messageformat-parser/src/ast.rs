@@ -1,10 +1,11 @@
 use super::js_intl::*;
 use serde::ser::{SerializeMap, SerializeStruct};
 use serde::{Serialize, Serializer};
+use serde_repr::Serialize_repr;
 use std::fmt;
 
 /// The type of an error that occurred while building an AST.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum ErrorKind {
     /// Argument is unclosed (e.g. `{0`)
     ExpectArgumentClosingBrace,
@@ -120,7 +121,7 @@ impl Span {
 
 /// An error that occurred while parsing an ICU message into an abstract
 /// syntax tree.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct Error {
     /// The kind of error.
     pub kind: ErrorKind,
@@ -289,7 +290,7 @@ pub enum NumberArgStyle<'s> {
 pub struct NumberSkeleton<'s> {
     pub tokens: Vec<NumberSkeletonToken<'s>>,
     pub span: Span,
-    pub parsed_options: Option<JsIntlNumberFormatOptions>,
+    pub parsed_options: JsIntlNumberFormatOptions,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -306,12 +307,21 @@ pub enum DateTimeArgStyle<'s> {
     Skeleton(DateTimeSkeleton<'s>),
 }
 
+#[derive(Clone, Debug, Eq, PartialEq, Serialize_repr)]
+#[repr(u8)]
+pub enum SkeletonType {
+    Number,
+    DateTime
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DateTimeSkeleton<'s> {
+    #[serde(rename = "type")]
+    pub skeleton_type: SkeletonType,
     pub pattern: &'s str,
-    pub span: Span,
-    pub parsed_options: Option<JsIntlDateTimeFormatOptions>,
+    pub location: Span,
+    pub parsed_options: JsIntlDateTimeFormatOptions,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -333,7 +343,7 @@ mod tests {
             serde_json::to_value(NumberArgStyle::Skeleton(NumberSkeleton {
                 tokens: vec![NumberSkeletonToken { stem: "foo", options: vec!["bar", "baz"] }],
                 span: Span::new(Position::new(0, 1, 1), Position::new(11, 1, 12)),
-                parsed_options: Some(JsIntlNumberFormatOptions {}),
+                parsed_options: JsIntlNumberFormatOptions {},
             }))
             .unwrap(),
             json!({

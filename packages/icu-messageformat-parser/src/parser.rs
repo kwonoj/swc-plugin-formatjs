@@ -461,9 +461,10 @@ impl<'s> Parser<'s> {
                                     return Err(self.error(ErrorKind::ExpectDateTimeSkeleton, span));
                                 }
                                 let style = Some(DateTimeArgStyle::Skeleton(DateTimeSkeleton {
+                                    skeleton_type: SkeletonType::DateTime,
                                     pattern: skeleton,
-                                    span: style_span,
-                                    parsed_options: None,
+                                    location: style_span,
+                                    parsed_options: Default::default(),
                                 }));
                                 if arg_type == "date" {
                                     AstElement::Date { value, span, style }
@@ -1000,7 +1001,7 @@ fn parse_number_skeleton_from_string(
         // TODO: use trimmed end position
         span,
         // TODO
-        parsed_options: None,
+        parsed_options: Default::default(),
     })
 }
 
