@@ -1,7 +1,8 @@
 use crate::ast::{self, *};
-use crate::js_intl::{
-    CompactDisplay, DateTimeDisplayFormat, DateTimeMonthDisplayFormat, HourCycle,
-    JsIntlDateTimeFormatOptions, JsIntlNumberFormatOptions, Notation,
+use crate::intl::date_time_format_options::JsIntlDateTimeFormatOptions;
+use crate::intl::number_format_options::JsIntlNumberFormatOptions;
+use crate::intl::options::{
+    CompactDisplay, DateTimeDisplayFormat, DateTimeMonthDisplayFormat, HourCycle, Notation,
     NumberFormatOptionsCurrencyDisplay, NumberFormatOptionsCurrencySign,
     NumberFormatOptionsRoundingPriority, NumberFormatOptionsSignDisplay, NumberFormatOptionsStyle,
     NumberFormatOptionsTrailingZeroDisplay, TimeZoneNameFormat, UnitDisplay,
@@ -84,13 +85,18 @@ fn get_best_pattern(skeleton: &str, locale: &str) -> String {
 
     for (pattern_pos, pattern_char) in skeleton.chars().enumerate() {
         if pattern_char == 'j' {
-            if pattern_pos + 1 < skeleton_char_len &&
-             skeleton_chars[pattern_pos + 1] == pattern_char {
-                extra_len += 1 ;
+            if pattern_pos + 1 < skeleton_char_len
+                && skeleton_chars[pattern_pos + 1] == pattern_char
+            {
+                extra_len += 1;
                 continue;
-             } else {
+            } else {
                 let mut hour_len = 1 + (extra_len & 1);
-                let mut day_period_len = if extra_len < 2 { 1 } else { 3 + (extra_len >> 1) };
+                let mut day_period_len = if extra_len < 2 {
+                    1
+                } else {
+                    3 + (extra_len >> 1)
+                };
                 let day_period_char = 'a';
                 let hour_char = get_default_hour_symbol_from_locale(locale);
 
@@ -107,7 +113,7 @@ fn get_best_pattern(skeleton: &str, locale: &str) -> String {
                     ret = format!("{}{}", hour_char, ret);
                     hour_len -= 1;
                 }
-             }
+            }
         } else if pattern_char == 'J' {
             ret = format!("{}H", ret);
         } else {
