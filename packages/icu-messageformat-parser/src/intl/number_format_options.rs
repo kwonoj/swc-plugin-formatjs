@@ -1,98 +1,18 @@
 use serde::Serialize;
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub enum CompactDisplay {
-    Short,
-    Long,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub enum Notation {
-    Standard,
-    Scientific,
-    Engineering,
-    Compact,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub enum UnitDisplay {
-    Short,
-    Long,
-    Narrow,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub enum NumberFormatOptionsTrailingZeroDisplay {
-    Auto,
-    StripIfInteger,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub enum NumberFormatOptionsRoundingPriority {
-    Auto,
-    MorePrecision,
-    LessPrecision,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub enum NumberFormatOptionsLocaleMatcher {
-    Lookup,
-    #[serde(rename = "best fit")]
-    BestFit,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub enum NumberFormatOptionsStyle {
-    Decimal,
-    Percent,
-    Currency,
-    Unit,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub enum NumberFormatOptionsCurrencyDisplay {
-    Symbol,
-    Code,
-    Name,
-    NarrowSymbol,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub enum NumberFormatOptionsCurrencySign {
-    Standard,
-    Accounting,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub enum NumberFormatOptionsSignDisplay {
-    Auto,
-    Always,
-    Never,
-    ExceptZero,
-}
+use super::options::{Notation, LocaleMatcherFormatOptions, CompactDisplay, NumberFormatOptionsStyle, NumberFormatOptionsCurrencySign, NumberFormatOptionsTrailingZeroDisplay, NumberFormatOptionsRoundingPriority, UnitDisplay, NumberFormatOptionsSignDisplay, NumberFormatOptionsCurrencyDisplay};
 
 /// Subset of options that will be parsed from the ICU message number skeleton.
 #[derive(Default, Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct JsIntlNumberFormatOptions {
-
     #[serde(skip_serializing_if = "Option::is_none")]
     pub notation: Option<Notation>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub compact_display: Option<CompactDisplay>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub locale_matcher: Option<NumberFormatOptionsLocaleMatcher>,
+    pub locale_matcher: Option<LocaleMatcherFormatOptions>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub style: Option<NumberFormatOptionsStyle>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -128,11 +48,4 @@ pub struct JsIntlNumberFormatOptions {
     pub currency_display: Option<NumberFormatOptionsCurrencyDisplay>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub unit_display: Option<UnitDisplay>,
-}
-
-/// Subset of options that will be parsed from the ICU message daet or time skeleton.
-#[derive(Default, Clone, Debug, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct JsIntlDateTimeFormatOptions {
-    // TODO
 }

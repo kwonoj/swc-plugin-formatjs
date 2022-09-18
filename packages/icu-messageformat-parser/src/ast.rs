@@ -1,8 +1,10 @@
-use super::js_intl::*;
 use serde::ser::{SerializeMap, SerializeStruct};
 use serde::{Serialize, Serializer};
 use serde_repr::Serialize_repr;
 use std::fmt;
+
+use crate::intl::date_time_format_options::JsIntlDateTimeFormatOptions;
+use crate::intl::number_format_options::JsIntlNumberFormatOptions;
 
 /// The type of an error that occurred while building an AST.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize_repr)]
@@ -363,7 +365,7 @@ pub struct NumberSkeletonToken<'s> {
 #[serde(untagged)]
 pub enum DateTimeArgStyle<'s> {
     Style(&'s str),
-    Skeleton(DateTimeSkeleton<'s>),
+    Skeleton(DateTimeSkeleton),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize_repr)]
@@ -375,10 +377,10 @@ pub enum SkeletonType {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct DateTimeSkeleton<'s> {
+pub struct DateTimeSkeleton {
     #[serde(rename = "type")]
     pub skeleton_type: SkeletonType,
-    pub pattern: &'s str,
+    pub pattern: String,
     pub location: Span,
     pub parsed_options: JsIntlDateTimeFormatOptions,
 }
@@ -393,7 +395,7 @@ pub struct PluralOrSelectOption<'s> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::js_intl::JsIntlNumberFormatOptions;
+    use crate::intl::number_format_options::JsIntlNumberFormatOptions;
     use serde_json::json;
 
     #[test]
