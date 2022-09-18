@@ -90,16 +90,15 @@ pub struct JsIntlNumberFormatOptions {
     pub notation: Option<Notation>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub compact_display: Option<CompactDisplay>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub unit: Option<String>,
+
     #[serde(skip_serializing_if = "Option::is_none")]
     pub locale_matcher: Option<NumberFormatOptionsLocaleMatcher>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub style: Option<NumberFormatOptionsStyle>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub currency: Option<String>,
+    pub unit: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub currency_display: Option<NumberFormatOptionsCurrencyDisplay>,
+    pub currency: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub currency_sign: Option<NumberFormatOptionsCurrencySign>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -114,19 +113,21 @@ pub struct JsIntlNumberFormatOptions {
     pub scale: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub use_grouping: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub unit_display: Option<UnitDisplay>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub minimum_integer_digits: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub minimum_fraction_digits: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub maximum_fraction_digits: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub minimum_significant_digits: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub maximum_significant_digits: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub minimum_fraction_digits: Option<u32>,
+    pub currency_display: Option<NumberFormatOptionsCurrencyDisplay>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub maximum_fraction_digits: Option<u32>,
+    pub unit_display: Option<UnitDisplay>,
 }
 
 /// Subset of options that will be parsed from the ICU message daet or time skeleton.

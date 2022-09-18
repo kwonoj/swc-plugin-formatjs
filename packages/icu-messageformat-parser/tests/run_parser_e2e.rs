@@ -53,14 +53,11 @@ fn read_sections<'a>(file: PathBuf) -> TestFixtureSections {
 #[fixture("tests/fixtures/nested_tags_1")]
 #[fixture("tests/fixtures/not_escaped_pound_1")]
 #[fixture("tests/fixtures/not_self_closing_tag_1")]
-#[fixture("tests/fixtures/number_skeleton_10")]
-#[fixture("tests/fixtures/number_skeleton_11")]
-#[fixture("tests/fixtures/number_skeleton_12")]
-#[fixture("tests/fixtures/number_skeleton_5")]
-#[fixture("tests/fixtures/number_skeleton_6")]
 #[fixture("tests/fixtures/number_skeleton_7")]
 #[fixture("tests/fixtures/number_skeleton_8")]
 #[fixture("tests/fixtures/number_skeleton_9")]
+#[fixture("tests/fixtures/number_skeleton_10")]
+#[fixture("tests/fixtures/number_skeleton_12")]
 #[fixture("tests/fixtures/numeric_tag_1")]
 #[fixture("tests/fixtures/open_close_tag_1")]
 #[fixture("tests/fixtures/open_close_tag_2")]
@@ -139,6 +136,9 @@ fn tests_skipped(_file: PathBuf) {
 #[fixture("tests/fixtures/number_skeleton_2")]
 #[fixture("tests/fixtures/number_skeleton_3")]
 #[fixture("tests/fixtures/number_skeleton_4")]
+#[fixture("tests/fixtures/number_skeleton_5")]
+#[fixture("tests/fixtures/number_skeleton_6")]
+#[fixture("tests/fixtures/number_skeleton_11")]
 fn parser_tests(file: PathBuf) {
     let fixture_sections = read_sections(file);
     let mut parser = Parser::new(
