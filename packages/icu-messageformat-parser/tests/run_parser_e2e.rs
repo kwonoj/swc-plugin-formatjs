@@ -55,8 +55,6 @@ fn read_sections<'a>(file: PathBuf) -> TestFixtureSections {
 #[fixture("tests/fixtures/open_close_tag_3")]
 #[fixture("tests/fixtures/open_close_tag_with_args")]
 #[fixture("tests/fixtures/open_close_tag_with_nested_arg")]
-#[fixture("tests/fixtures/plural_arg_1")]
-#[fixture("tests/fixtures/plural_arg_2")]
 #[fixture("tests/fixtures/plural_arg_with_escaped_nested_message")]
 #[fixture("tests/fixtures/plural_arg_with_offset_1")]
 #[fixture("tests/fixtures/quoted_pound_sign_1")]
@@ -139,7 +137,8 @@ fn tests_skipped(_file: PathBuf) {
 #[fixture("tests/fixtures/empty_argument_2")]
 #[fixture("tests/fixtures/duplicate_select_selectors")]
 #[fixture("tests/fixtures/duplicate_plural_selectors")]
-
+#[fixture("tests/fixtures/plural_arg_1")]
+#[fixture("tests/fixtures/plural_arg_2")]
 fn parser_tests(file: PathBuf) {
     let fixture_sections = read_sections(file);
     let mut parser = Parser::new(

@@ -970,7 +970,7 @@ impl<'s> Parser<'s> {
                 selector,
                 PluralOrSelectOption {
                     value: fragment,
-                    span: Span::new(opening_brace_position, self.position()),
+                    location: Span::new(opening_brace_position, self.position()),
                 },
             ));
             // Keep track of the existing selectors
