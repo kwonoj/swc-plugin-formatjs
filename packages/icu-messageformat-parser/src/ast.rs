@@ -64,10 +64,12 @@ pub enum ErrorKind {
 
     /// The tag is malformed. (e.g. `<bold!>foo</bold!>)
     InvalidTag = 23,
+    /// The tag name is invalid. (e.g. `<123>foo</123>`)
+    InvalidTagName = 25,
     /// The closing tag does not match the opening tag. (e.g. `<bold>foo</italic>`)
-    UnmatchedClosingTag = 24,
+    UnmatchedClosingTag = 26,
     /// The opening tag has unmatched closing tag. (e.g. `<bold>foo`)
-    UnclosedTag = 25,
+    UnclosedTag = 27,
 }
 
 /// A single position in an ICU message.

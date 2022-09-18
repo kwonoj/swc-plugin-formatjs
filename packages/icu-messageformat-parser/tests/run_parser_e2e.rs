@@ -47,8 +47,6 @@ fn read_sections<'a>(file: PathBuf) -> TestFixtureSections {
 #[fixture("tests/fixtures/simple_date_and_time_arg_1")]
 #[fixture("tests/fixtures/treat_unicode_nbsp_as_whitespace")]
 #[fixture("tests/fixtures/trivial_2")]
-#[fixture("tests/fixtures/unmatched_open_close_tag_1")]
-#[fixture("tests/fixtures/unmatched_open_close_tag_2")]
 #[fixture("tests/fixtures/uppercase_tag_1")]
 #[fixture("tests/fixtures/less_than_sign_1")]
 #[fixture("tests/fixtures/negative_offset_1")]
@@ -56,6 +54,8 @@ fn tests_skipped(_file: PathBuf) {
     similar_asserts::assert_eq!(true, true);
 }
 
+#[fixture("tests/fixtures/unmatched_open_close_tag_1")]
+#[fixture("tests/fixtures/unmatched_open_close_tag_2")]
 #[fixture("tests/fixtures/date_arg_skeleton_1")]
 #[fixture("tests/fixtures/basic_argument_1")]
 #[fixture("tests/fixtures/basic_argument_2")]
