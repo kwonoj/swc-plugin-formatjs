@@ -1,9 +1,10 @@
 use crate::ast::{self, *};
 use crate::js_intl::{
-    CompactDisplay, JsIntlDateTimeFormatOptions, JsIntlNumberFormatOptions, Notation,
+    CompactDisplay, DateTimeDisplayFormat, DateTimeMonthDisplayFormat, HourCycle,
+    JsIntlDateTimeFormatOptions, JsIntlNumberFormatOptions, Notation,
     NumberFormatOptionsCurrencyDisplay, NumberFormatOptionsCurrencySign,
     NumberFormatOptionsRoundingPriority, NumberFormatOptionsSignDisplay, NumberFormatOptionsStyle,
-    NumberFormatOptionsTrailingZeroDisplay, UnitDisplay,
+    NumberFormatOptionsTrailingZeroDisplay, TimeZoneNameFormat, UnitDisplay,
 };
 use crate::pattern_syntax::is_pattern_syntax;
 use once_cell::sync::Lazy;
@@ -24,6 +25,14 @@ pub static INTEGER_WIDTH_REGEX: Lazy<Regexp> =
     Lazy::new(|| Regexp::new(r"(\*)(0+)|(#+)(0+)|(0+)").unwrap());
 pub static CONCISE_INTEGER_WIDTH_REGEX: Lazy<Regexp> =
     Lazy::new(|| Regexp::new(r"^(0+)$").unwrap());
+
+/// https://unicode.org/reports/tr35/tr35-dates.html#Date_Field_Symbol_Table
+/// Credit: https://github.com/caridy/intl-datetimeformat-pattern/blob/master/index.js
+/// with some tweaks
+/// TODO: This is incomplete
+pub static DATE_TIME_REGEX: Lazy<Regexp> = Lazy::new(|| {
+    Regexp::new(r"(?:[Eec]{1,6}|G{1,5}|[Qq]{1,5}|(?:[yYur]+|U{1,5})|[ML]{1,5}|d{1,2}|D{1,3}|F{1}|[abB]{1,5}|[hkHK]{1,2}|w{1,2}|W{1}|m{1,2}|s{1,2}|[zZOvVxX]{1,4})").unwrap()
+});
 
 #[derive(Clone, Debug)]
 pub struct Parser<'s> {
@@ -62,12 +71,244 @@ pub struct ParserOptions {
     locale: Option<String>,
 }
 
+fn get_default_hour_symbol_from_locale(locale: &str) -> char {
+    unimplemented!("");
+}
+
+fn get_best_pattern(skeleton: &str, locale: &str) -> String {
+    let mut ret = skeleton.to_string();
+
+    let skeleton_chars: Vec<_> = skeleton.chars().collect();
+    let skeleton_char_len = skeleton_chars.len();
+    let mut extra_len = 0;
+
+    for (pattern_pos, pattern_char) in skeleton.chars().enumerate() {
+        if pattern_char == 'j' {
+            if pattern_pos + 1 < skeleton_char_len &&
+             skeleton_chars[pattern_pos + 1] == pattern_char {
+                extra_len += 1 ;
+                continue;
+             } else {
+                let mut hour_len = 1 + (extra_len & 1);
+                let mut day_period_len = if extra_len < 2 { 1 } else { 3 + (extra_len >> 1) };
+                let day_period_char = 'a';
+                let hour_char = get_default_hour_symbol_from_locale(locale);
+
+                if hour_char == 'H' || hour_char == 'k' {
+                    day_period_len = 0;
+                }
+
+                while day_period_len > 0 {
+                    ret = format!("{}{}", ret, day_period_char);
+                    day_period_len -= 1;
+                }
+
+                while hour_len > 0 {
+                    ret = format!("{}{}", hour_char, ret);
+                    hour_len -= 1;
+                }
+             }
+        } else if pattern_char == 'J' {
+            ret = format!("{}H", ret);
+        } else {
+            ret = format!("{}{}", ret, pattern_char);
+        }
+    }
+
+    ret
+}
+
 fn parse_date_time_skeleton(skeleton: &str) -> JsIntlDateTimeFormatOptions {
-    Default::default()
+    let mut ret = JsIntlDateTimeFormatOptions::default();
+    let caps = DATE_TIME_REGEX.captures(skeleton);
+
+    if let Some(caps) = caps {
+        let match_str = caps.get(0).map(|m| m.as_str()).unwrap_or_default();
+        let match_len = match_str.len();
+
+        match &match_str.chars().next().unwrap_or_default() {
+            // Era
+            'G' => {
+                if match_len == 4 {
+                    ret.era = Some(UnitDisplay::Long);
+                } else if match_len == 5 {
+                    ret.era = Some(UnitDisplay::Narrow);
+                } else {
+                    ret.era = Some(UnitDisplay::Short);
+                }
+            }
+            // Year
+            'y' => {
+                if match_len == 2 {
+                    ret.year = Some(DateTimeDisplayFormat::TwoDigit);
+                } else {
+                    ret.year = Some(DateTimeDisplayFormat::Numeric);
+                }
+            }
+            'Y' | 'u' | 'U' | 'r' => {
+                panic!("`Y/u/U/r` (year) patterns are not supported, use `y` instead");
+            }
+            // Quarter
+            'q' | 'Q' => {
+                panic!("`q/Q` (quarter) patterns are not supported");
+            }
+            // Month
+            'M' | 'L' => {
+                if match_len == 1 {
+                    ret.month = Some(DateTimeMonthDisplayFormat::Numeric);
+                } else if match_len == 2 {
+                    ret.month = Some(DateTimeMonthDisplayFormat::TwoDigit);
+                } else if match_len == 3 {
+                    ret.month = Some(DateTimeMonthDisplayFormat::Short);
+                } else if match_len == 4 {
+                    ret.month = Some(DateTimeMonthDisplayFormat::Long);
+                } else if match_len == 5 {
+                    ret.month = Some(DateTimeMonthDisplayFormat::Narrow);
+                }
+            }
+            // Week
+            'w' | 'W' => {
+                panic!("`w/W` (week) patterns are not supported");
+            }
+            'd' => {
+                if match_len == 1 {
+                    ret.day = Some(DateTimeDisplayFormat::Numeric);
+                } else if match_len == 2 {
+                    ret.day = Some(DateTimeDisplayFormat::TwoDigit);
+                }
+            }
+            'D' | 'F' | 'g' => {
+                panic!("`D/F/g` (day) patterns are not supported, use `d` instead");
+            }
+            'E' => {
+                if match_len == 4 {
+                    ret.weekday = Some(UnitDisplay::Short);
+                } else if match_len == 5 {
+                    ret.weekday = Some(UnitDisplay::Narrow);
+                } else {
+                    ret.weekday = Some(UnitDisplay::Short);
+                }
+            }
+            'e' => {
+                if match_len < 4 {
+                    panic!("`e..eee` (weekday) patterns are not supported");
+                }
+
+                if match_len == 4 {
+                    ret.weekday = Some(UnitDisplay::Short);
+                } else if match_len == 5 {
+                    ret.weekday = Some(UnitDisplay::Long);
+                } else if match_len == 6 {
+                    ret.weekday = Some(UnitDisplay::Narrow);
+                } else if match_len == 7 {
+                    ret.weekday = Some(UnitDisplay::Short);
+                }
+            }
+            'c' => {
+                if match_len < 4 {
+                    panic!("`c..ccc` (weekday) patterns are not supported");
+                }
+
+                if match_len == 4 {
+                    ret.weekday = Some(UnitDisplay::Short);
+                } else if match_len == 5 {
+                    ret.weekday = Some(UnitDisplay::Long);
+                } else if match_len == 6 {
+                    ret.weekday = Some(UnitDisplay::Narrow);
+                } else if match_len == 7 {
+                    ret.weekday = Some(UnitDisplay::Short);
+                }
+            }
+            // Period
+            'a' => {
+                // AM, PM
+                ret.hour12 = Some(true)
+            }
+            'b' /*  am, pm, noon, midnight*/ | 'B' /*  flexible day periods */ => {
+                panic!("`b/B` (period) patterns are not supported, use `a` instead");
+            }
+            //Hour
+            'h' => {
+                ret.hour_cycle = Some(HourCycle::H12);
+                if match_len == 1 {
+                    ret.hour = Some(DateTimeDisplayFormat::Numeric);
+                } else if match_len == 2 {
+                    ret.hour = Some(DateTimeDisplayFormat::TwoDigit);
+                }
+            }
+            'H' => {
+                ret.hour_cycle = Some(HourCycle::H23);
+                if match_len == 1 {
+                    ret.hour = Some(DateTimeDisplayFormat::Numeric);
+                } else if match_len == 2 {
+                    ret.hour = Some(DateTimeDisplayFormat::TwoDigit);
+                }
+            }
+            'K' => {
+                ret.hour_cycle = Some(HourCycle::H11);
+                if match_len == 1 {
+                    ret.hour = Some(DateTimeDisplayFormat::Numeric);
+                } else if match_len == 2 {
+                    ret.hour = Some(DateTimeDisplayFormat::TwoDigit);
+                }
+            }
+            'k' => {
+                ret.hour_cycle = Some(HourCycle::H24);
+                if match_len == 1 {
+                    ret.hour = Some(DateTimeDisplayFormat::Numeric);
+                } else if match_len == 2 {
+                    ret.hour = Some(DateTimeDisplayFormat::TwoDigit);
+                }
+            }
+            'j' | 'J' | 'C' => {
+                panic!("`j/J/C` (hour) patterns are not supported, use `h/H/K/k` instead");
+            }
+            // Minute
+            'm' => {
+                if match_len == 1 {
+                    ret.minute = Some(DateTimeDisplayFormat::Numeric);
+                } else if match_len == 2 {
+                    ret.minute = Some(DateTimeDisplayFormat::TwoDigit);
+                }
+            }
+            // Second
+            's' => {
+                if match_len == 1 {
+                    ret.second = Some(DateTimeDisplayFormat::Numeric);
+                } else if match_len == 2 {
+                    ret.second = Some(DateTimeDisplayFormat::TwoDigit);
+                }
+            }
+            'S' | 'A' => { panic!("`S/A` (second) patterns are not supported, use `s` instead'"); }
+            // Zone
+            'z' => {
+                // 1..3, 4: specific non-location format
+                ret.time_zone_name = if match_len < 4 { Some(TimeZoneNameFormat::Short) } else {
+                    Some(TimeZoneNameFormat::Long)
+                };
+            }
+            'Z' /* 1..3, 4, 5: The ISO8601 varios formats */ |
+            'O' /* 1, 4: miliseconds in day short, long */ |
+            'v' /* 1, 4: generic non-location format */ |
+            'V' /* 1, 2, 3, 4: time zone ID or city */ |
+            'X' /* 1, 2, 3, 4: The ISO8601 varios formats */ |
+            'x' /* 1, 2, 3, 4: The ISO8601 varios formats */ => {
+                panic!("`Z/O/v/V/X/x` (timeZone) patterns are not supported, use `z` instead'");
+            }
+            _ => {}
+        }
+    }
+
+    ret
 }
 
 fn icu_unit_to_ecma(value: &str) -> Option<String> {
-    Some(Regexp::new(r"^(.*?)-").unwrap().replace(value, "").to_string())
+    Some(
+        Regexp::new(r"^(.*?)-")
+            .unwrap()
+            .replace(value, "")
+            .to_string(),
+    )
 }
 
 fn parse_significant_precision(ret: &mut JsIntlNumberFormatOptions, value: &str) {
@@ -748,15 +989,24 @@ impl<'s> Parser<'s> {
                                 if skeleton.is_empty() {
                                     return Err(self.error(ErrorKind::ExpectDateTimeSkeleton, span));
                                 }
+
+                                let pattern = if let Some(locale) = &self.options.locale {
+                                    get_best_pattern(skeleton, &locale)
+                                } else {
+                                    skeleton.to_string()
+                                };
+
+                                let parsed_options = if self.options.should_parse_skeletons {
+                                    parse_date_time_skeleton(&pattern)
+                                } else {
+                                    Default::default()
+                                };
+
                                 let style = Some(DateTimeArgStyle::Skeleton(DateTimeSkeleton {
                                     skeleton_type: SkeletonType::DateTime,
-                                    pattern: skeleton,
+                                    pattern,
                                     location: style_span,
-                                    parsed_options: if self.options.should_parse_skeletons {
-                                        parse_date_time_skeleton(skeleton)
-                                    } else {
-                                        Default::default()
-                                    },
+                                    parsed_options,
                                 }));
                                 if arg_type == "date" {
                                     AstElement::Date { value, span, style }

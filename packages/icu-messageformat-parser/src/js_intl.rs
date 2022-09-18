@@ -41,7 +41,7 @@ pub enum NumberFormatOptionsRoundingPriority {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub enum NumberFormatOptionsLocaleMatcher {
+pub enum LocaleMatcherFormatOptions {
     Lookup,
     #[serde(rename = "best fit")]
     BestFit,
@@ -85,14 +85,13 @@ pub enum NumberFormatOptionsSignDisplay {
 #[derive(Default, Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct JsIntlNumberFormatOptions {
-
     #[serde(skip_serializing_if = "Option::is_none")]
     pub notation: Option<Notation>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub compact_display: Option<CompactDisplay>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub locale_matcher: Option<NumberFormatOptionsLocaleMatcher>,
+    pub locale_matcher: Option<LocaleMatcherFormatOptions>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub style: Option<NumberFormatOptionsStyle>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -130,9 +129,100 @@ pub struct JsIntlNumberFormatOptions {
     pub unit_display: Option<UnitDisplay>,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum DateTimeFormatMatcher {
+    Basic,
+    #[serde(rename = "best fit")]
+    BestFit,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum DateTimeFormatStyle {
+    Full,
+    Long,
+    Medium,
+    Short,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum DateTimeDisplayFormat {
+    Numeric,
+    #[serde(rename = "2-digit")]
+    TwoDigit,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum DateTimeMonthDisplayFormat {
+    Numeric,
+    #[serde(rename = "2-digit")]
+    TwoDigit,
+    Long,
+    Short,
+    Narrow
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum TimeZoneNameFormat {
+    Short,
+    Long,
+    ShortOffset,
+    LongOffset,
+    ShortGeneric,
+    LongGeneric,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]  
+pub enum HourCycle {
+    H11,
+    H12,
+    H23,
+    H24
+}
+
 /// Subset of options that will be parsed from the ICU message daet or time skeleton.
 #[derive(Default, Clone, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct JsIntlDateTimeFormatOptions {
-    // TODO
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub locale_matcher: Option<LocaleMatcherFormatOptions>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub weekday: Option<UnitDisplay>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub era: Option<UnitDisplay>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub year: Option<DateTimeDisplayFormat>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub month: Option<DateTimeMonthDisplayFormat>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub day: Option<DateTimeDisplayFormat>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hour: Option<DateTimeDisplayFormat>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub minute: Option<DateTimeDisplayFormat>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub second: Option<DateTimeDisplayFormat>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub time_zone_name: Option<TimeZoneNameFormat>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hour12: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hour_cycle: Option<HourCycle>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub time_zone: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub format_matcher: Option<DateTimeFormatMatcher>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub date_style: Option<DateTimeFormatStyle>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub time_style: Option<DateTimeFormatStyle>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub day_period: Option<UnitDisplay>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fractional_second_digits: Option<usize>,
 }

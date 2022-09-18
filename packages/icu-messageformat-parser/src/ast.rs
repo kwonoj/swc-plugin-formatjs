@@ -363,7 +363,7 @@ pub struct NumberSkeletonToken<'s> {
 #[serde(untagged)]
 pub enum DateTimeArgStyle<'s> {
     Style(&'s str),
-    Skeleton(DateTimeSkeleton<'s>),
+    Skeleton(DateTimeSkeleton),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize_repr)]
@@ -375,10 +375,10 @@ pub enum SkeletonType {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct DateTimeSkeleton<'s> {
+pub struct DateTimeSkeleton {
     #[serde(rename = "type")]
     pub skeleton_type: SkeletonType,
-    pub pattern: &'s str,
+    pub pattern: String,
     pub location: Span,
     pub parsed_options: JsIntlDateTimeFormatOptions,
 }
