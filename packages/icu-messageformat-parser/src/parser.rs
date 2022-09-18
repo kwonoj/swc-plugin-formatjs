@@ -308,6 +308,9 @@ fn parse_number_skeleton(skeleton: &Vec<NumberSkeletonToken>) -> JsIntlNumberFor
                     ret.minimum_fraction_digits = g4.map(|g| g.as_str().len() as u32);
                     ret.maximum_fraction_digits =
                         Some(g4.unwrap().as_str().len() as u32 + g5.unwrap().as_str().len() as u32);
+                } else {
+                    ret.minimum_fraction_digits = g1_len;
+                    ret.maximum_fraction_digits = g1_len;
                 }
 
                 let opt = token.options.get(0);
