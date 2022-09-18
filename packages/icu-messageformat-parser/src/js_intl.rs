@@ -85,7 +85,6 @@ pub enum NumberFormatOptionsSignDisplay {
 #[derive(Default, Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct JsIntlNumberFormatOptions {
-    // NumberFormatDigitOptions
     #[serde(skip_serializing_if = "Option::is_none")]
     pub minimum_integer_digits: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -96,8 +95,6 @@ pub struct JsIntlNumberFormatOptions {
     pub minimum_fraction_digits: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub maximum_fraction_digits: Option<u32>,
-
-    // Intl.NumberFormatOptions
     #[serde(skip_serializing_if = "Option::is_none")]
     pub notation: Option<Notation>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -105,12 +102,11 @@ pub struct JsIntlNumberFormatOptions {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub unit: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub unit_display: Option<UnitDisplay>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub locale_matcher: Option<NumberFormatOptionsLocaleMatcher>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub style: Option<NumberFormatOptionsStyle>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub currency: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub currency_display: Option<NumberFormatOptionsCurrencyDisplay>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -123,13 +119,12 @@ pub struct JsIntlNumberFormatOptions {
     pub trailing_zero_display: Option<NumberFormatOptionsTrailingZeroDisplay>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rounding_priority: Option<NumberFormatOptionsRoundingPriority>,
-
     #[serde(skip_serializing_if = "Option::is_none")]
     pub scale: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub currency: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub use_grouping: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub unit_display: Option<UnitDisplay>,
 }
 
 /// Subset of options that will be parsed from the ICU message daet or time skeleton.
