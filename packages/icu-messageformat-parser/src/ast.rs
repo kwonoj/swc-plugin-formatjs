@@ -306,9 +306,9 @@ impl<'s> Serialize for AstElement<'s> {
             } => {
                 let mut state = serializer.serialize_struct("Pound", 2)?;
                 state.serialize_field("type", &8)?;
-                state.serialize_field("location", span)?;
                 state.serialize_field("value", value)?;
                 state.serialize_field("children", children)?;
+                state.serialize_field("location", span)?;
                 state.end()
             }
         }
