@@ -85,16 +85,7 @@ pub enum NumberFormatOptionsSignDisplay {
 #[derive(Default, Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct JsIntlNumberFormatOptions {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub minimum_integer_digits: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub minimum_significant_digits: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub maximum_significant_digits: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub minimum_fraction_digits: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub maximum_fraction_digits: Option<u32>,
+
     #[serde(skip_serializing_if = "Option::is_none")]
     pub notation: Option<Notation>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -125,6 +116,17 @@ pub struct JsIntlNumberFormatOptions {
     pub use_grouping: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub unit_display: Option<UnitDisplay>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub minimum_integer_digits: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub minimum_significant_digits: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub maximum_significant_digits: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub minimum_fraction_digits: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub maximum_fraction_digits: Option<u32>,
 }
 
 /// Subset of options that will be parsed from the ICU message daet or time skeleton.

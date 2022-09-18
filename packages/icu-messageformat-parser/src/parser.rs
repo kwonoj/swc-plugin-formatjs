@@ -1,8 +1,9 @@
 use crate::ast::{self, *};
 use crate::js_intl::{
     CompactDisplay, JsIntlDateTimeFormatOptions, JsIntlNumberFormatOptions, Notation,
-    NumberFormatOptionsCurrencyDisplay, NumberFormatOptionsRoundingPriority,
-    NumberFormatOptionsStyle, UnitDisplay,
+    NumberFormatOptionsCurrencyDisplay, NumberFormatOptionsCurrencySign,
+    NumberFormatOptionsRoundingPriority, NumberFormatOptionsSignDisplay, NumberFormatOptionsStyle,
+    NumberFormatOptionsTrailingZeroDisplay, UnitDisplay,
 };
 use crate::pattern_syntax::is_pattern_syntax;
 use once_cell::sync::Lazy;
@@ -70,16 +71,16 @@ fn icu_unit_to_ecma(value: &str) -> Option<String> {
     None
 }
 
-fn parse_significant_precision(value: &mut JsIntlNumberFormatOptions, stem: &str) {
-    if let Some(l) = stem.chars().last() {
+fn parse_significant_precision(ret: &mut JsIntlNumberFormatOptions, value: &str) {
+    if let Some(l) = value.chars().last() {
         if l == 'r' {
-            value.rounding_priority = Some(NumberFormatOptionsRoundingPriority::MorePrecision);
+            ret.rounding_priority = Some(NumberFormatOptionsRoundingPriority::MorePrecision);
         } else if l == 's' {
-            value.rounding_priority = Some(NumberFormatOptionsRoundingPriority::LessPrecision);
+            ret.rounding_priority = Some(NumberFormatOptionsRoundingPriority::LessPrecision);
         }
     }
 
-    let cap = SIGNIFICANT_PRECISION_REGEX.captures(stem);
+    let cap = SIGNIFICANT_PRECISION_REGEX.captures(value);
     if let Some(cap) = cap {
         let g1 = cap.get(1);
         let g2 = cap.get(2);
@@ -92,23 +93,87 @@ fn parse_significant_precision(value: &mut JsIntlNumberFormatOptions, stem: &str
 
         // @@@ case
         if is_g2_non_str {
-            value.minimum_significant_digits = g1_len;
-            value.maximum_significant_digits = g1_len;
+            ret.minimum_significant_digits = g1_len;
+            ret.maximum_significant_digits = g1_len;
         }
         // @@@+ case
         else if g2.map(|g| g.as_str() == "+").unwrap_or(false) {
-            value.minimum_significant_digits = g1_len;
+            ret.minimum_significant_digits = g1_len;
         }
         // .### case
         else if g1.map(|g| g.as_str().starts_with("#")).unwrap_or(false) {
-            value.maximum_significant_digits = g1_len;
+            ret.maximum_significant_digits = g1_len;
         }
         // .@@## or .@@@ case
         else {
-            value.minimum_significant_digits = g1_len;
-            value.maximum_significant_digits =
+            ret.minimum_significant_digits = g1_len;
+            ret.maximum_significant_digits =
                 g1_len.map(|l| l + g2.map(|g| g.as_str().len() as u32).unwrap_or(0));
         }
+    }
+}
+
+fn parse_sign(ret: &mut JsIntlNumberFormatOptions, value: &str) {
+    match value {
+        "sign-auto" => {
+            ret.sign_display = Some(NumberFormatOptionsSignDisplay::Auto);
+        }
+        "sign-accounting" | "()" => {
+            ret.currency_sign = Some(NumberFormatOptionsCurrencySign::Accounting);
+        }
+        "sign-always" | "+!" => {
+            ret.sign_display = Some(NumberFormatOptionsSignDisplay::Always);
+        }
+        "sign-accounting-always" | "()!" => {
+            ret.sign_display = Some(NumberFormatOptionsSignDisplay::Always);
+            ret.currency_sign = Some(NumberFormatOptionsCurrencySign::Accounting);
+        }
+        "sign-except-zero" | "+?" => {
+            ret.sign_display = Some(NumberFormatOptionsSignDisplay::ExceptZero);
+        }
+        "sign-accounting-except-zero" | "()?" => {
+            ret.sign_display = Some(NumberFormatOptionsSignDisplay::ExceptZero);
+            ret.currency_sign = Some(NumberFormatOptionsCurrencySign::Accounting);
+        }
+        "sign-never" | "+_" => {
+            ret.sign_display = Some(NumberFormatOptionsSignDisplay::Never);
+        }
+        _ => {}
+    }
+}
+
+fn parse_concise_scientific_and_engineering_stem(ret: &mut JsIntlNumberFormatOptions, stem: &str) {
+    let mut stem = stem;
+    let mut has_sign = false;
+    if stem.starts_with("EE") {
+        ret.notation = Some(Notation::Engineering);
+        stem = &stem[2..];
+        has_sign = true;
+    } else if stem.starts_with("E") {
+        ret.notation = Some(Notation::Scientific);
+        stem = &stem[1..];
+        has_sign = true;
+    }
+
+    if has_sign {
+        let sign_display = &stem[0..2];
+        match sign_display {
+            "+!" => {
+                ret.sign_display = Some(NumberFormatOptionsSignDisplay::Always);
+                stem = &stem[2..];
+            }
+            "+?" => {
+                ret.sign_display = Some(NumberFormatOptionsSignDisplay::ExceptZero);
+                stem = &stem[2..];
+            }
+            _ => {}
+        }
+
+        if !CONCISE_INTEGER_WIDTH_REGEX.is_match(stem) {
+            panic!("Malformed concise eng/scientific notation");
+        }
+
+        ret.minimum_integer_digits = Some(stem.len() as u32);
     }
 }
 
@@ -154,11 +219,17 @@ fn parse_number_skeleton(skeleton: &Vec<NumberSkeletonToken>) -> JsIntlNumberFor
                 continue;
             }
             "scientific" => {
-                //TODO
+                ret.notation = Some(Notation::Scientific);
+                for opt in &token.options {
+                    parse_sign(&mut ret, opt);
+                }
                 continue;
             }
             "engineering" => {
-                //TODO
+                ret.notation = Some(Notation::Engineering);
+                for opt in &token.options {
+                    parse_sign(&mut ret, opt);
+                }
                 continue;
             }
             "notation-simple" => {
@@ -214,6 +285,43 @@ fn parse_number_skeleton(skeleton: &Vec<NumberSkeletonToken>) -> JsIntlNumberFor
         }
 
         if FRACTION_PRECISION_REGEX.is_match(token.stem) {
+            // Precision
+            // https://unicode-org.github.io/icu/userguide/format_parse/numbers/skeletons.html#fraction-precision
+            // precision-integer case
+            let caps = FRACTION_PRECISION_REGEX.captures(token.stem);
+            if let Some(caps) = caps {
+                let g1_len = caps.get(1).map(|g| g.as_str().len() as u32);
+                let g2 = caps.get(2);
+                let g3 = caps.get(3);
+                let g4 = caps.get(4);
+                let g5 = caps.get(5);
+
+                // .000* case (before ICU67 it was .000+)
+                if g2.map(|g| g.as_str() == "*").unwrap_or(false) {
+                    ret.minimum_fraction_digits = g1_len;
+                }
+                // .### case
+                else if g3.map(|g| g.as_str().starts_with("#")).unwrap_or(false) {
+                    ret.maximum_fraction_digits = g3.map(|g| g.as_str().len() as u32);
+                }
+                // .00## case
+                else if g4.is_some() && g5.is_some() {
+                    ret.minimum_fraction_digits = g4.map(|g| g.as_str().len() as u32);
+                    ret.maximum_fraction_digits =
+                        Some(g4.unwrap().as_str().len() as u32 + g5.unwrap().as_str().len() as u32);
+                }
+
+                let opt = token.options.get(0);
+                // https://unicode-org.github.io/icu/userguide/format_parse/numbers/skeletons.html#trailing-zero-display
+                if let Some(opt) = opt {
+                    if *opt == "w" {
+                        ret.trailing_zero_display =
+                            Some(NumberFormatOptionsTrailingZeroDisplay::StripIfInteger);
+                    } else {
+                        parse_significant_precision(&mut ret, opt);
+                    }
+                }
+            }
             continue;
         }
 
@@ -223,68 +331,8 @@ fn parse_number_skeleton(skeleton: &Vec<NumberSkeletonToken>) -> JsIntlNumberFor
             continue;
         }
 
-        /*
-        const signOpts = parseSign(token.stem)
-        if (signOpts) {
-        result = {...result, ...signOpts}
-        }
-        const conciseScientificAndEngineeringOpts =
-        parseConciseScientificAndEngineeringStem(token.stem)
-        if (conciseScientificAndEngineeringOpts) {
-        result = {...result, ...conciseScientificAndEngineeringOpts}
-        }*/
-
-        /*
-          if (FRACTION_PRECISION_REGEX.test(token.stem)) {
-            // Precision
-            // https://unicode-org.github.io/icu/userguide/format_parse/numbers/skeletons.html#fraction-precision
-            // precision-integer case
-            if (token.options.length > 1) {
-              throw new RangeError(
-                'Fraction-precision stems only accept a single optional option'
-              )
-            }
-            token.stem.replace(
-              FRACTION_PRECISION_REGEX,
-              function (
-                _: string,
-                g1: string,
-                g2: string | number,
-                g3: string,
-                g4: string,
-                g5: string
-              ) {
-                // .000* case (before ICU67 it was .000+)
-                if (g2 === '*') {
-                  result.minimumFractionDigits = g1.length
-                }
-                // .### case
-                else if (g3 && g3[0] === '#') {
-                  result.maximumFractionDigits = g3.length
-                }
-                // .00## case
-                else if (g4 && g5) {
-                  result.minimumFractionDigits = g4.length
-                  result.maximumFractionDigits = g4.length + g5.length
-                } else {
-                  result.minimumFractionDigits = g1.length
-                  result.maximumFractionDigits = g1.length
-                }
-                return ''
-              }
-            )
-
-            const opt = token.options[0]
-            // https://unicode-org.github.io/icu/userguide/format_parse/numbers/skeletons.html#trailing-zero-display
-            if (opt === 'w') {
-              result = {...result, trailingZeroDisplay: 'stripIfInteger'}
-            } else if (opt) {
-              result = {...result, ...parseSignificantPrecision(opt)}
-            }
-            continue
-          }
-
-        }*/
+        parse_sign(&mut ret, token.stem);
+        parse_concise_scientific_and_engineering_stem(&mut ret, token.stem);
     }
     ret
 }
