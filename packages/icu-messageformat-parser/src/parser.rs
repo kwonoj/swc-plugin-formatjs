@@ -67,8 +67,7 @@ fn parse_date_time_skeleton(skeleton: &str) -> JsIntlDateTimeFormatOptions {
 }
 
 fn icu_unit_to_ecma(value: &str) -> Option<String> {
-    //TODO
-    None
+    Some(Regexp::new(r"^(.*?)-").unwrap().replace(value, "").to_string())
 }
 
 fn parse_significant_precision(ret: &mut JsIntlNumberFormatOptions, value: &str) {
