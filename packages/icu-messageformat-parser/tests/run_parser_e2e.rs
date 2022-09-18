@@ -39,10 +39,6 @@ fn read_sections<'a>(file: PathBuf) -> TestFixtureSections {
 #[fixture("tests/fixtures/date_arg_skeleton_with_jjjj")]
 #[fixture("tests/fixtures/date_arg_skeleton_with_jjjjj")]
 #[fixture("tests/fixtures/date_arg_skeleton_with_jjjjjj")]
-#[fixture("tests/fixtures/duplicate_plural_selectors")]
-#[fixture("tests/fixtures/duplicate_select_selectors")]
-#[fixture("tests/fixtures/empty_argument_1")]
-#[fixture("tests/fixtures/empty_argument_2")]
 #[fixture("tests/fixtures/escaped_multiple_tags_1")]
 #[fixture("tests/fixtures/escaped_pound_1")]
 #[fixture("tests/fixtures/expect_number_arg_skeleton_token_1")]
@@ -139,6 +135,11 @@ fn tests_skipped(_file: PathBuf) {
 #[fixture("tests/fixtures/number_skeleton_10")]
 #[fixture("tests/fixtures/number_skeleton_11")]
 #[fixture("tests/fixtures/number_skeleton_12")]
+#[fixture("tests/fixtures/empty_argument_1")]
+#[fixture("tests/fixtures/empty_argument_2")]
+#[fixture("tests/fixtures/duplicate_select_selectors")]
+#[fixture("tests/fixtures/duplicate_plural_selectors")]
+
 fn parser_tests(file: PathBuf) {
     let fixture_sections = read_sections(file);
     let mut parser = Parser::new(
