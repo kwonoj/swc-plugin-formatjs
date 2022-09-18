@@ -1,9 +1,12 @@
 use crate::ast::{self, *};
 use crate::js_intl::{
     CompactDisplay, JsIntlDateTimeFormatOptions, JsIntlNumberFormatOptions, Notation,
-    NumberFormatOptionsCurrencyDisplay, NumberFormatOptionsStyle, UnitDisplay,
+    NumberFormatOptionsCurrencyDisplay, NumberFormatOptionsRoundingPriority,
+    NumberFormatOptionsStyle, UnitDisplay,
 };
 use crate::pattern_syntax::is_pattern_syntax;
+use once_cell::sync::Lazy;
+use regex::Regex as Regexp;
 use serde::{Deserialize, Serialize};
 use std::cell::Cell;
 use std::cmp;
@@ -11,6 +14,15 @@ use std::collections::HashSet;
 use std::result;
 
 type Result<T> = result::Result<T, ast::Error>;
+
+pub static FRACTION_PRECISION_REGEX: Lazy<Regexp> =
+    Lazy::new(|| Regexp::new(r"^\.(?:(0+)(\*)?|(#+)|(0+)(#+))$").unwrap());
+pub static SIGNIFICANT_PRECISION_REGEX: Lazy<Regexp> =
+    Lazy::new(|| Regexp::new(r"^(@+)?(\+|#+)?[rs]?$").unwrap());
+pub static INTEGER_WIDTH_REGEX: Lazy<Regexp> =
+    Lazy::new(|| Regexp::new(r"(\*)(0+)|(#+)(0+)|(0+)").unwrap());
+pub static CONCISE_INTEGER_WIDTH_REGEX: Lazy<Regexp> =
+    Lazy::new(|| Regexp::new(r"^(0+)$").unwrap());
 
 #[derive(Clone, Debug)]
 pub struct Parser<'s> {
@@ -58,76 +70,222 @@ fn icu_unit_to_ecma(value: &str) -> Option<String> {
     None
 }
 
+fn parse_significant_precision(value: &mut JsIntlNumberFormatOptions, stem: &str) {
+    if let Some(l) = stem.chars().last() {
+        if l == 'r' {
+            value.rounding_priority = Some(NumberFormatOptionsRoundingPriority::MorePrecision);
+        } else if l == 's' {
+            value.rounding_priority = Some(NumberFormatOptionsRoundingPriority::LessPrecision);
+        }
+    }
+
+    let cap = SIGNIFICANT_PRECISION_REGEX.captures(stem);
+    if let Some(cap) = cap {
+        let g1 = cap.get(1);
+        let g2 = cap.get(2);
+
+        let g1_len = g1.map(|g| g.as_str().len() as u32);
+        let is_g2_non_str = g2.is_none()
+            || g2
+                .map(|g| g.as_str().parse::<u32>().is_ok())
+                .unwrap_or(false);
+
+        // @@@ case
+        if is_g2_non_str {
+            value.minimum_significant_digits = g1_len;
+            value.maximum_significant_digits = g1_len;
+        }
+        // @@@+ case
+        else if g2.map(|g| g.as_str() == "+").unwrap_or(false) {
+            value.minimum_significant_digits = g1_len;
+        }
+        // .### case
+        else if g1.map(|g| g.as_str().starts_with("#")).unwrap_or(false) {
+            value.maximum_significant_digits = g1_len;
+        }
+        // .@@## or .@@@ case
+        else {
+            value.minimum_significant_digits = g1_len;
+            value.maximum_significant_digits =
+                g1_len.map(|l| l + g2.map(|g| g.as_str().len() as u32).unwrap_or(0));
+        }
+    }
+}
+
 fn parse_number_skeleton(skeleton: &Vec<NumberSkeletonToken>) -> JsIntlNumberFormatOptions {
     let mut ret = JsIntlNumberFormatOptions::default();
     for token in skeleton {
         match token.stem {
             "percent" | "%" => {
                 ret.style = Some(NumberFormatOptionsStyle::Percent);
+                continue;
             }
             "%x100" => {
                 ret.style = Some(NumberFormatOptionsStyle::Percent);
                 ret.scale = Some(100.0);
+                continue;
             }
             "currency" => {
                 ret.style = Some(NumberFormatOptionsStyle::Currency);
                 ret.currency = Some(token.options[0].to_string());
+                continue;
             }
             "group-off" | ",_" => {
                 ret.use_grouping = Some(false);
+                continue;
             }
             "precision-integer" | "." => {
                 ret.maximum_fraction_digits = Some(0);
+                continue;
             }
             "measure-unit" | "unit" => {
                 ret.style = Some(NumberFormatOptionsStyle::Unit);
                 ret.unit = icu_unit_to_ecma(token.options[0]);
+                continue;
             }
             "compact-short" | "K" => {
                 ret.notation = Some(Notation::Compact);
                 ret.compact_display = Some(CompactDisplay::Short);
+                continue;
             }
             "compact-long" | "KK" => {
                 ret.notation = Some(Notation::Compact);
                 ret.compact_display = Some(CompactDisplay::Long);
+                continue;
             }
             "scientific" => {
                 //TODO
+                continue;
             }
             "engineering" => {
                 //TODO
+                continue;
             }
             "notation-simple" => {
                 ret.notation = Some(Notation::Standard);
+                continue;
             }
             // https://github.com/unicode-org/icu/blob/master/icu4c/source/i18n/unicode/unumberformatter.h
             "unit-width-narrow" => {
                 ret.currency_display = Some(NumberFormatOptionsCurrencyDisplay::NarrowSymbol);
                 ret.unit_display = Some(UnitDisplay::Narrow);
+                continue;
             }
             "unit-width-short" => {
                 ret.currency_display = Some(NumberFormatOptionsCurrencyDisplay::Code);
                 ret.unit_display = Some(UnitDisplay::Short);
+                continue;
             }
             "unit-width-full-name" => {
                 ret.currency_display = Some(NumberFormatOptionsCurrencyDisplay::Name);
                 ret.unit_display = Some(UnitDisplay::Long);
+                continue;
             }
             "unit-width-iso-code" => {
                 ret.currency_display = Some(NumberFormatOptionsCurrencyDisplay::Symbol);
+                continue;
             }
             "scale" => {
-                //TODO
+                ret.scale = token.options[0].parse().ok();
+                continue;
             }
             "integer-width" => {
-                //TODO
+                let cap = INTEGER_WIDTH_REGEX.captures(token.options[0]);
+                if let Some(cap) = cap {
+                    if cap.get(1).is_some() {
+                        ret.minimum_integer_digits = cap.get(2).map(|c| c.as_str().len() as u32);
+                    } else if cap.get(3).is_some() && cap.get(4).is_some() {
+                        panic!("We currently do not support maximum integer digits");
+                    } else if cap.get(5).is_some() {
+                        panic!("We currently do not support exact integer digits");
+                    }
+                }
+                continue;
             }
             _ => {
                 //noop
             }
         }
-    }
 
+        // https://unicode-org.github.io/icu/userguide/format_parse/numbers/skeletons.html#integer-width
+        if CONCISE_INTEGER_WIDTH_REGEX.is_match(token.stem) {
+            ret.minimum_integer_digits = Some(token.stem.len() as u32);
+            continue;
+        }
+
+        if FRACTION_PRECISION_REGEX.is_match(token.stem) {
+            continue;
+        }
+
+        // https://unicode-org.github.io/icu/userguide/format_parse/numbers/skeletons.html#significant-digits-precision
+        if SIGNIFICANT_PRECISION_REGEX.is_match(token.stem) {
+            parse_significant_precision(&mut ret, token.stem);
+            continue;
+        }
+
+        /*
+        const signOpts = parseSign(token.stem)
+        if (signOpts) {
+        result = {...result, ...signOpts}
+        }
+        const conciseScientificAndEngineeringOpts =
+        parseConciseScientificAndEngineeringStem(token.stem)
+        if (conciseScientificAndEngineeringOpts) {
+        result = {...result, ...conciseScientificAndEngineeringOpts}
+        }*/
+
+        /*
+          if (FRACTION_PRECISION_REGEX.test(token.stem)) {
+            // Precision
+            // https://unicode-org.github.io/icu/userguide/format_parse/numbers/skeletons.html#fraction-precision
+            // precision-integer case
+            if (token.options.length > 1) {
+              throw new RangeError(
+                'Fraction-precision stems only accept a single optional option'
+              )
+            }
+            token.stem.replace(
+              FRACTION_PRECISION_REGEX,
+              function (
+                _: string,
+                g1: string,
+                g2: string | number,
+                g3: string,
+                g4: string,
+                g5: string
+              ) {
+                // .000* case (before ICU67 it was .000+)
+                if (g2 === '*') {
+                  result.minimumFractionDigits = g1.length
+                }
+                // .### case
+                else if (g3 && g3[0] === '#') {
+                  result.maximumFractionDigits = g3.length
+                }
+                // .00## case
+                else if (g4 && g5) {
+                  result.minimumFractionDigits = g4.length
+                  result.maximumFractionDigits = g4.length + g5.length
+                } else {
+                  result.minimumFractionDigits = g1.length
+                  result.maximumFractionDigits = g1.length
+                }
+                return ''
+              }
+            )
+
+            const opt = token.options[0]
+            // https://unicode-org.github.io/icu/userguide/format_parse/numbers/skeletons.html#trailing-zero-display
+            if (opt === 'w') {
+              result = {...result, trailingZeroDisplay: 'stripIfInteger'}
+            } else if (opt) {
+              result = {...result, ...parseSignificantPrecision(opt)}
+            }
+            continue
+          }
+
+        }*/
+    }
     ret
 }
 
