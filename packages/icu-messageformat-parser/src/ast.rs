@@ -84,13 +84,21 @@ pub struct Position {
 
 impl Position {
     pub fn new(offset: usize, line: usize, column: usize) -> Position {
-        Position { offset, line, column }
+        Position {
+            offset,
+            line,
+            column,
+        }
     }
 }
 
 impl fmt::Debug for Position {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Position::new({:?}, {:?}, {:?})", self.offset, self.line, self.column)
+        write!(
+            f,
+            "Position::new({:?}, {:?}, {:?})",
+            self.offset, self.line, self.column
+        )
     }
 }
 
@@ -144,20 +152,36 @@ pub enum PluralType {
     Ordinal,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum AstElement<'s> {
     /// Raw text
     Literal { value: String, span: Span },
     /// Variable w/o any format, e.g `var` in `this is a {var}`
     Argument { value: &'s str, span: Span },
     /// Variable w/ number format
-    Number { value: &'s str, span: Span, style: Option<NumberArgStyle<'s>> },
+    Number {
+        value: &'s str,
+        span: Span,
+        style: Option<NumberArgStyle<'s>>,
+    },
     /// Variable w/ date format
-    Date { value: &'s str, span: Span, style: Option<DateTimeArgStyle<'s>> },
+    Date {
+        value: &'s str,
+        span: Span,
+        style: Option<DateTimeArgStyle<'s>>,
+    },
     /// Variable w/ time format
-    Time { value: &'s str, span: Span, style: Option<DateTimeArgStyle<'s>> },
+    Time {
+        value: &'s str,
+        span: Span,
+        style: Option<DateTimeArgStyle<'s>>,
+    },
     /// Variable w/ select format
-    Select { value: &'s str, span: Span, options: PluralOrSelectOptions<'s> },
+    Select {
+        value: &'s str,
+        span: Span,
+        options: PluralOrSelectOptions<'s>,
+    },
     /// Variable w/ plural format
     Plural {
         value: &'s str,
@@ -171,7 +195,11 @@ pub enum AstElement<'s> {
     /// This is the `#` symbol that will be substituted with the count.
     Pound(Span),
     /// XML-like tag
-    Tag { value: &'s str, span: Span, children: Box<Ast<'s>> },
+    Tag {
+        value: &'s str,
+        span: Span,
+        children: Box<Ast<'s>>,
+    },
 }
 
 // Until this is resolved, we have to roll our own serialization: https://github.com/serde-rs/serde/issues/745
@@ -181,21 +209,31 @@ impl<'s> Serialize for AstElement<'s> {
         S: Serializer,
     {
         match *self {
-            AstElement::Literal { ref value, ref span } => {
+            AstElement::Literal {
+                ref value,
+                ref span,
+            } => {
                 let mut state = serializer.serialize_struct("Literal", 3)?;
                 state.serialize_field("type", &0)?;
                 state.serialize_field("value", value)?;
                 state.serialize_field("location", span)?;
                 state.end()
             }
-            AstElement::Argument { ref value, ref span } => {
+            AstElement::Argument {
+                ref value,
+                ref span,
+            } => {
                 let mut state = serializer.serialize_struct("Argument", 3)?;
                 state.serialize_field("type", &1)?;
                 state.serialize_field("value", value)?;
                 state.serialize_field("location", span)?;
                 state.end()
             }
-            AstElement::Number { ref value, ref span, ref style } => {
+            AstElement::Number {
+                ref value,
+                ref span,
+                ref style,
+            } => {
                 let mut state = serializer.serialize_struct("Number", 4)?;
                 state.serialize_field("type", &2)?;
                 state.serialize_field("value", value)?;
@@ -203,7 +241,11 @@ impl<'s> Serialize for AstElement<'s> {
                 state.serialize_field("style", style)?;
                 state.end()
             }
-            AstElement::Date { ref value, ref span, ref style } => {
+            AstElement::Date {
+                ref value,
+                ref span,
+                ref style,
+            } => {
                 let mut state = serializer.serialize_struct("Date", 4)?;
                 state.serialize_field("type", &3)?;
                 state.serialize_field("value", value)?;
@@ -211,7 +253,11 @@ impl<'s> Serialize for AstElement<'s> {
                 state.serialize_field("style", style)?;
                 state.end()
             }
-            AstElement::Time { ref value, ref span, ref style } => {
+            AstElement::Time {
+                ref value,
+                ref span,
+                ref style,
+            } => {
                 let mut state = serializer.serialize_struct("Time", 4)?;
                 state.serialize_field("type", &4)?;
                 state.serialize_field("value", value)?;
@@ -219,7 +265,11 @@ impl<'s> Serialize for AstElement<'s> {
                 state.serialize_field("style", style)?;
                 state.end()
             }
-            AstElement::Select { ref value, ref span, ref options } => {
+            AstElement::Select {
+                ref value,
+                ref span,
+                ref options,
+            } => {
                 let mut state = serializer.serialize_struct("Select", 4)?;
                 state.serialize_field("type", &5)?;
                 state.serialize_field("value", value)?;
@@ -249,7 +299,11 @@ impl<'s> Serialize for AstElement<'s> {
                 state.serialize_field("location", span)?;
                 state.end()
             }
-            AstElement::Tag { ref value, ref span, ref children } => {
+            AstElement::Tag {
+                ref value,
+                ref span,
+                ref children,
+            } => {
                 let mut state = serializer.serialize_struct("Pound", 2)?;
                 state.serialize_field("type", &8)?;
                 state.serialize_field("location", span)?;
@@ -262,7 +316,7 @@ impl<'s> Serialize for AstElement<'s> {
 }
 
 /// Workaround of Rust's orphan impl rule
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct PluralOrSelectOptions<'s>(pub Vec<(&'s str, PluralOrSelectOption<'s>)>);
 
 impl<'s> Serialize for PluralOrSelectOptions<'s> {
@@ -279,14 +333,14 @@ impl<'s> Serialize for PluralOrSelectOptions<'s> {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(untagged)]
 pub enum NumberArgStyle<'s> {
     Style(&'s str),
     Skeleton(NumberSkeleton<'s>),
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NumberSkeleton<'s> {
     #[serde(rename = "type")]
@@ -314,7 +368,7 @@ pub enum DateTimeArgStyle<'s> {
 #[repr(u8)]
 pub enum SkeletonType {
     Number,
-    DateTime
+    DateTime,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -327,7 +381,7 @@ pub struct DateTimeSkeleton<'s> {
     pub parsed_options: JsIntlDateTimeFormatOptions,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PluralOrSelectOption<'s> {
     pub value: Ast<'s>,
@@ -345,9 +399,12 @@ mod tests {
         similar_asserts::assert_eq!(
             serde_json::to_value(NumberArgStyle::Skeleton(NumberSkeleton {
                 skeleton_type: SkeletonType::Number,
-                tokens: vec![NumberSkeletonToken { stem: "foo", options: vec!["bar", "baz"] }],
+                tokens: vec![NumberSkeletonToken {
+                    stem: "foo",
+                    options: vec!["bar", "baz"]
+                }],
                 location: Span::new(Position::new(0, 1, 1), Position::new(11, 1, 12)),
-                parsed_options: JsIntlNumberFormatOptions {},
+                parsed_options: JsIntlNumberFormatOptions::default(),
             }))
             .unwrap(),
             json!({
@@ -386,6 +443,9 @@ mod tests {
 
     #[test]
     fn serialize_plural_type() {
-        similar_asserts::assert_eq!(serde_json::to_value(PluralType::Cardinal).unwrap(), json!("cardinal"))
+        similar_asserts::assert_eq!(
+            serde_json::to_value(PluralType::Cardinal).unwrap(),
+            json!("cardinal")
+        )
     }
 }

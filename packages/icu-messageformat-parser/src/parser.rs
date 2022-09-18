@@ -1,4 +1,8 @@
 use crate::ast::{self, *};
+use crate::js_intl::{
+    CompactDisplay, JsIntlDateTimeFormatOptions, JsIntlNumberFormatOptions, Notation,
+    NumberFormatOptionsCurrencyDisplay, NumberFormatOptionsStyle, UnitDisplay,
+};
 use crate::pattern_syntax::is_pattern_syntax;
 use serde::{Deserialize, Serialize};
 use std::cell::Cell;
@@ -45,6 +49,88 @@ pub struct ParserOptions {
     locale: Option<String>,
 }
 
+fn parse_date_time_skeleton(skeleton: &str) -> JsIntlDateTimeFormatOptions {
+    Default::default()
+}
+
+fn icu_unit_to_ecma(value: &str) -> Option<String> {
+    //TODO
+    None
+}
+
+fn parse_number_skeleton(skeleton: &Vec<NumberSkeletonToken>) -> JsIntlNumberFormatOptions {
+    let mut ret = JsIntlNumberFormatOptions::default();
+    for token in skeleton {
+        match token.stem {
+            "percent" | "%" => {
+                ret.style = Some(NumberFormatOptionsStyle::Percent);
+            }
+            "%x100" => {
+                ret.style = Some(NumberFormatOptionsStyle::Percent);
+                ret.scale = Some(100.0);
+            }
+            "currency" => {
+                ret.style = Some(NumberFormatOptionsStyle::Currency);
+                ret.currency = Some(token.options[0].to_string());
+            }
+            "group-off" | ",_" => {
+                ret.use_grouping = Some(false);
+            }
+            "precision-integer" | "." => {
+                ret.maximum_fraction_digits = Some(0);
+            }
+            "measure-unit" | "unit" => {
+                ret.style = Some(NumberFormatOptionsStyle::Unit);
+                ret.unit = icu_unit_to_ecma(token.options[0]);
+            }
+            "compact-short" | "K" => {
+                ret.notation = Some(Notation::Compact);
+                ret.compact_display = Some(CompactDisplay::Short);
+            }
+            "compact-long" | "KK" => {
+                ret.notation = Some(Notation::Compact);
+                ret.compact_display = Some(CompactDisplay::Long);
+            }
+            "scientific" => {
+                //TODO
+            }
+            "engineering" => {
+                //TODO
+            }
+            "notation-simple" => {
+                ret.notation = Some(Notation::Standard);
+            }
+            // https://github.com/unicode-org/icu/blob/master/icu4c/source/i18n/unicode/unumberformatter.h
+            "unit-width-narrow" => {
+                ret.currency_display = Some(NumberFormatOptionsCurrencyDisplay::NarrowSymbol);
+                ret.unit_display = Some(UnitDisplay::Narrow);
+            }
+            "unit-width-short" => {
+                ret.currency_display = Some(NumberFormatOptionsCurrencyDisplay::Code);
+                ret.unit_display = Some(UnitDisplay::Short);
+            }
+            "unit-width-full-name" => {
+                ret.currency_display = Some(NumberFormatOptionsCurrencyDisplay::Name);
+                ret.unit_display = Some(UnitDisplay::Long);
+            }
+            "unit-width-iso-code" => {
+                ret.currency_display = Some(NumberFormatOptionsCurrencyDisplay::Symbol);
+            }
+            "scale" => {
+                //TODO
+            }
+            "integer-width" => {
+                //TODO
+            }
+            _ => {
+                //noop
+            }
+        }
+    }
+
+    ret
+}
+
 impl<'s> Parser<'s> {
     pub fn new(message: &'s str, options: &ParserOptions) -> Parser<'s> {
         Parser {
@@ -54,7 +140,7 @@ impl<'s> Parser<'s> {
                 line: 1,
                 column: 1,
             }),
-            options: options.clone()
+            options: options.clone(),
         }
     }
 
@@ -437,9 +523,12 @@ impl<'s> Parser<'s> {
 
                         Ok(match arg_type {
                             "number" => {
-                                let skeleton =
-                                    parse_number_skeleton_from_string(skeleton, style_span)
-                                        .map_err(|kind| self.error(kind, style_span))?;
+                                let skeleton = parse_number_skeleton_from_string(
+                                    skeleton,
+                                    style_span,
+                                    self.options.should_parse_skeletons,
+                                )
+                                .map_err(|kind| self.error(kind, style_span))?;
 
                                 AstElement::Number {
                                     value,
@@ -455,7 +544,11 @@ impl<'s> Parser<'s> {
                                     skeleton_type: SkeletonType::DateTime,
                                     pattern: skeleton,
                                     location: style_span,
-                                    parsed_options: Default::default(),
+                                    parsed_options: if self.options.should_parse_skeletons {
+                                        parse_date_time_skeleton(skeleton)
+                                    } else {
+                                        Default::default()
+                                    },
                                 }));
                                 if arg_type == "date" {
                                     AstElement::Date { value, span, style }
@@ -956,6 +1049,7 @@ impl<'s> Parser<'s> {
 fn parse_number_skeleton_from_string(
     skeleton: &str,
     span: Span,
+    should_parse_skeleton: bool,
 ) -> std::result::Result<NumberSkeleton, ErrorKind> {
     if skeleton.is_empty() {
         return Err(ErrorKind::ExpectNumberSkeleton);
@@ -987,13 +1081,19 @@ fn parse_number_skeleton_from_string(
         })
         .collect();
 
+    let tokens = tokens?;
+    let parsed_options = if should_parse_skeleton {
+        parse_number_skeleton(&tokens)
+    } else {
+        Default::default()
+    };
+
     Ok(NumberSkeleton {
         skeleton_type: SkeletonType::Number,
-        tokens: tokens?,
+        tokens,
         // TODO: use trimmed end position
         location: span,
-        // TODO
-        parsed_options: Default::default(),
+        parsed_options,
     })
 }
 
