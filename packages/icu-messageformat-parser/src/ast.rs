@@ -273,8 +273,8 @@ impl<'s> Serialize for AstElement<'s> {
                 let mut state = serializer.serialize_struct("Select", 4)?;
                 state.serialize_field("type", &5)?;
                 state.serialize_field("value", value)?;
+                state.serialize_field("options", options)?;
                 state.serialize_field("location", span)?;
-                state.serialize_field("style", options)?;
                 state.end()
             }
             AstElement::Plural {
