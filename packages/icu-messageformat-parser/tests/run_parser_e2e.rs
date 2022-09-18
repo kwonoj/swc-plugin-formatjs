@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 use icu_messageformat_parser::{AstElement, Error, Parser, ParserOptions};
 use serde::Serialize;
+use serde_json::Value;
 use std::{fs, path::PathBuf};
 use testing::fixture;
 
@@ -40,22 +41,22 @@ fn read_sections<'a>(file: PathBuf) -> TestFixtureSections {
 #[fixture("tests/fixtures/date_arg_skeleton_with_jjjjj")]
 #[fixture("tests/fixtures/date_arg_skeleton_with_jjjjjj")]
 #[fixture("tests/fixtures/expect_number_arg_skeleton_token_1")]
-#[fixture("tests/fixtures/expect_number_arg_skeleton_token_option_1")]
-#[fixture("tests/fixtures/select_arg_with_nested_arguments")]
 #[fixture("tests/fixtures/self_closing_tag_1")]
 #[fixture("tests/fixtures/self_closing_tag_2")]
-#[fixture("tests/fixtures/simple_date_and_time_arg_1")]
 #[fixture("tests/fixtures/treat_unicode_nbsp_as_whitespace")]
 #[fixture("tests/fixtures/trivial_2")]
-#[fixture("tests/fixtures/unmatched_open_close_tag_1")]
-#[fixture("tests/fixtures/unmatched_open_close_tag_2")]
 #[fixture("tests/fixtures/uppercase_tag_1")]
-#[fixture("tests/fixtures/less_than_sign_1")]
-#[fixture("tests/fixtures/negative_offset_1")]
 fn tests_skipped(_file: PathBuf) {
     similar_asserts::assert_eq!(true, true);
 }
 
+#[fixture("tests/fixtures/negative_offset_1")]
+#[fixture("tests/fixtures/simple_date_and_time_arg_1")]
+#[fixture("tests/fixtures/select_arg_with_nested_arguments")]
+#[fixture("tests/fixtures/expect_number_arg_skeleton_token_option_1")]
+#[fixture("tests/fixtures/less_than_sign_1")]
+#[fixture("tests/fixtures/unmatched_open_close_tag_1")]
+#[fixture("tests/fixtures/unmatched_open_close_tag_2")]
 #[fixture("tests/fixtures/date_arg_skeleton_1")]
 #[fixture("tests/fixtures/basic_argument_1")]
 #[fixture("tests/fixtures/basic_argument_2")]
@@ -160,5 +161,9 @@ fn parser_tests(file: PathBuf) {
 
     let parsed_result_str = serde_json::to_string_pretty(&parsed_result_snapshot)
         .expect("Should able to serialize parsed result");
-    similar_asserts::assert_eq!(parsed_result_str, fixture_sections.expected);
+
+    let input: Value = serde_json::from_str(&parsed_result_str).unwrap();
+    let expected: Value = serde_json::from_str(&fixture_sections.expected).unwrap();
+
+    similar_asserts::assert_eq!(input, expected);
 }
