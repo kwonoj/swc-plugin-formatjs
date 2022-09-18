@@ -1,6 +1,4 @@
-use swc_core::{
-    ecma::visit::VisitMut,
-};
+use swc_core::ecma::visit::VisitMut;
 
 pub struct FormatJSVisitor {}
 
