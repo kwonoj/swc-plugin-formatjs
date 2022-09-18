@@ -56,7 +56,6 @@ fn read_sections<'a>(file: PathBuf) -> TestFixtureSections {
 #[fixture("tests/fixtures/number_skeleton_10")]
 #[fixture("tests/fixtures/number_skeleton_11")]
 #[fixture("tests/fixtures/number_skeleton_12")]
-#[fixture("tests/fixtures/number_skeleton_4")]
 #[fixture("tests/fixtures/number_skeleton_5")]
 #[fixture("tests/fixtures/number_skeleton_6")]
 #[fixture("tests/fixtures/number_skeleton_7")]
@@ -139,6 +138,7 @@ fn tests_skipped(_file: PathBuf) {
 #[fixture("tests/fixtures/number_skeleton_1")]
 #[fixture("tests/fixtures/number_skeleton_2")]
 #[fixture("tests/fixtures/number_skeleton_3")]
+#[fixture("tests/fixtures/number_skeleton_4")]
 fn parser_tests(file: PathBuf) {
     let fixture_sections = read_sections(file);
     let mut parser = Parser::new(
