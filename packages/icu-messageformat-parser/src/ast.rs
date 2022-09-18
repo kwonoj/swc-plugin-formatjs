@@ -287,10 +287,10 @@ impl<'s> Serialize for AstElement<'s> {
                 let mut state = serializer.serialize_struct("Plural", 6)?;
                 state.serialize_field("type", &6)?;
                 state.serialize_field("value", value)?;
-                state.serialize_field("type", plural_type)?;
-                state.serialize_field("location", span)?;
+                state.serialize_field("options", options)?;
                 state.serialize_field("offset", offset)?;
-                state.serialize_field("style", options)?;
+                state.serialize_field("pluralType", plural_type)?;
+                state.serialize_field("location", span)?;
                 state.end()
             }
             AstElement::Pound(ref span) => {
@@ -385,7 +385,7 @@ pub struct DateTimeSkeleton<'s> {
 #[serde(rename_all = "camelCase")]
 pub struct PluralOrSelectOption<'s> {
     pub value: Ast<'s>,
-    pub span: Span,
+    pub location: Span,
 }
 
 #[cfg(test)]
