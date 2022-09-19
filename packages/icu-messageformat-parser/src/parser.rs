@@ -77,6 +77,14 @@ fn is_whitespace(ch: char) -> bool {
     ch.is_whitespace() || ch == '\u{200e}' || ch == '\u{200f}'
 }
 
+fn is_alpha(ch: Option<char>) -> bool {
+    if let Some(ch) = ch {
+        matches!(ch, 'a'..='z' | 'A'..='Z')
+    } else {
+        false
+    }
+}
+
 fn get_default_hour_symbol_from_locale(locale: &str) -> char {
     let language_tag = LanguageTag::parse(locale).expect("Should able to parse locale tag");
 
@@ -688,7 +696,7 @@ impl<'s> Parser<'s> {
                         ));
                     }
                 }
-                '<' if !self.options.ignore_tag && matches!(self.peek(), Some('a'..='z')) => {
+                '<' if !self.options.ignore_tag && is_alpha(self.peek()) => {
                     self.parse_tag(nesting_level, parent_arg_type)?
                 }
                 _ => self.parse_literal(nesting_level, parent_arg_type)?,
@@ -736,7 +744,7 @@ impl<'s> Parser<'s> {
             let end_tag_start_position = self.position();
 
             if self.bump_if("</") {
-                if self.is_eof() || !(matches!(self.char(), 'a'..='z')) {
+                if self.is_eof() || !is_alpha(Some(self.char())) {
                     return Err(self.error(
                         ErrorKind::InvalidTag,
                         Span::new(end_tag_start_position, self.position()),
@@ -876,7 +884,7 @@ impl<'s> Parser<'s> {
             && self.char() == '<'
             && (self.options.ignore_tag
                 // If at the opening tag or closing tag position, bail.
-                || !(matches!(self.peek(), Some(c) if c.is_ascii_lowercase() || c == '/')))
+                || !(matches!(self.peek(), Some(c) if is_alpha(Some(c)) || c == '/')))
         {
             self.bump(); // `<`
             Some('<')
