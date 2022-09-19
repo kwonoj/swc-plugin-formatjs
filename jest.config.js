@@ -1,3 +1,10 @@
 module.exports = {
-  testMatch: ['**/?(*.)+(spec).[jt]s?(x)'],
+  transform: {
+    '^.+\\.(t|j)sx?$': ['@swc/jest', {
+      module: {
+        type: 'commonjs',
+      }
+    }],
+  },
+  testMatch: ['**/spec/?(*.)+(spec).[jt]s?(x)'],
 }
