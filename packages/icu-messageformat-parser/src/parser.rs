@@ -1561,7 +1561,7 @@ fn parse_number_skeleton_from_string(
     should_parse_skeleton: bool,
 ) -> std::result::Result<NumberSkeleton, ErrorKind> {
     if skeleton.is_empty() {
-        return Err(ErrorKind::ExpectNumberSkeleton);
+        return Err(ErrorKind::InvalidNumberSkeleton);
     }
     // Parse the skeleton
     let tokens: std::result::Result<Vec<_>, _> = skeleton
