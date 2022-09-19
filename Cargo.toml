@@ -1,8 +1,6 @@
 [workspace]
 exclude = ["spec/swc-formatjs-custom-transform"]
-members = [
-  "packages/*"
-]
+members = ["packages/*"]
 
 [profile.release]
 lto = true
