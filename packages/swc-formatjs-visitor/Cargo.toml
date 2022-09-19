@@ -8,6 +8,7 @@ repository  = "https://github.com/kwonoj/swc-plugin-formatjs"
 version     = "0.0.1"
 
 [dependencies]
+icu-messageformat-parser = { version = "0.0.1", path = "../icu-messageformat-parser", features = ["utf16"] }
 swc_core = { version = "0.23.13", features = ["common", "ecma_visit"] }
 
 [dev-dependencies]
