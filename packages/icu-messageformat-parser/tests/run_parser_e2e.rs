@@ -32,7 +32,6 @@ fn read_sections<'a>(file: PathBuf) -> TestFixtureSections {
     }
 }
 
-#[fixture("tests/fixtures/expect_number_arg_skeleton_token_1")]
 #[fixture("tests/fixtures/trivial_2")]
 #[fixture("tests/fixtures/uppercase_tag_1")]
 #[fixture("tests/fixtures/treat_unicode_nbsp_as_whitespace")]
@@ -40,6 +39,7 @@ fn tests_skipped(_file: PathBuf) {
     similar_asserts::assert_eq!(true, true);
 }
 
+#[fixture("tests/fixtures/expect_number_arg_skeleton_token_1")]
 #[fixture("tests/fixtures/self_closing_tag_1")]
 #[fixture("tests/fixtures/self_closing_tag_2")]
 #[fixture("tests/fixtures/date_arg_skeleton_with_j")]
