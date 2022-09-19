@@ -16,6 +16,8 @@ use std::cell::Cell;
 use std::cmp;
 use std::collections::HashSet;
 use std::result;
+#[cfg(feature = "utf16")]
+use widestring::{Utf16Str, Utf16String};
 
 type Result<T> = result::Result<T, ast::Error>;
 
@@ -41,6 +43,8 @@ pub struct Parser<'s> {
     position: Cell<Position>,
     message: &'s str,
     options: ParserOptions,
+    #[cfg(feature = "utf16")]
+    message_utf16: Utf16String,
 }
 
 #[derive(Default, Debug, Eq, PartialEq, Clone, Serialize, Deserialize)]
@@ -646,6 +650,8 @@ impl<'s> Parser<'s> {
     pub fn new(message: &'s str, options: &ParserOptions) -> Parser<'s> {
         Parser {
             message,
+            #[cfg(feature = "utf16")]
+            message_utf16: Utf16String::from(message),
             position: Cell::new(Position {
                 offset: 0,
                 line: 1,
@@ -919,7 +925,7 @@ impl<'s> Parser<'s> {
         }
 
         // argument name
-        let value = self.parse_identifier_if_possible().0;
+        let value = self.parse_identifier_if_possible().0.to_string();
         if value.is_empty() {
             return Err(self.error(
                 ErrorKind::MalformedArgument,
@@ -979,13 +985,21 @@ impl<'s> Parser<'s> {
         &'s self,
         nesting_level: usize,
         expecting_close_tag: bool,
-        value: &'s str,
+        value: String,
         opening_brace_position: Position,
     ) -> Result<AstElement> {
         // Parse this range:
         // {name, type, style}
         //        ^---^
         let type_starting_position = self.position();
+        #[cfg(feature = "utf16")]
+        let arg_type_utf16 = self.parse_identifier_if_possible().0;
+        #[cfg(feature = "utf16")]
+        let arg_type = arg_type_utf16.to_string();
+        #[cfg(feature = "utf16")]
+        let arg_type = arg_type.as_str();
+
+        #[cfg(not(feature = "utf16"))]
         let arg_type = self.parse_identifier_if_possible().0;
         let type_end_position = self.position();
 
@@ -1165,6 +1179,14 @@ impl<'s> Parser<'s> {
                     0
                 };
 
+                #[cfg(feature = "utf16")]
+                let options = self.try_parse_plural_or_select_options(
+                    nesting_level,
+                    arg_type_utf16,
+                    expecting_close_tag,
+                    identifier_and_span,
+                )?;
+                #[cfg(not(feature = "utf16"))]
                 let options = self.try_parse_plural_or_select_options(
                     nesting_level,
                     arg_type,
@@ -1212,9 +1234,11 @@ impl<'s> Parser<'s> {
     fn try_parse_plural_or_select_options(
         &'s self,
         nesting_level: usize,
-        parent_arg_type: &'s str,
+        #[cfg(feature = "utf16")] parent_arg_type: &'s Utf16Str,
+        #[cfg(not(feature = "utf16"))] parent_arg_type: &'s str,
         expecting_close_tag: bool,
-        parsed_first_identifier: (&'s str, Span),
+        #[cfg(feature = "utf16")] parsed_first_identifier: (&'s Utf16Str, Span),
+        #[cfg(not(feature = "utf16"))] parsed_first_identifier: (&'s str, Span),
     ) -> Result<PluralOrSelectOptions> {
         let mut has_other_clause = false;
 
@@ -1234,7 +1258,14 @@ impl<'s> Parser<'s> {
                         ErrorKind::InvalidPluralArgumentSelector,
                     )?;
                     selector_span = Span::new(start_position, self.position());
-                    selector = &self.message[start_position.offset..self.offset()];
+                    #[cfg(feature = "utf16")]
+                    {
+                        selector = &self.message_utf16[start_position.offset..self.offset()];
+                    }
+                    #[cfg(not(feature = "utf16"))]
+                    {
+                        selector = &self.message[start_position.offset..self.offset()];
+                    }
                 } else {
                     // TODO: check to make sure that the plural category is valid.
                     break;
@@ -1273,8 +1304,11 @@ impl<'s> Parser<'s> {
                 ));
             }
 
-            let fragment =
-                self.parse_message(nesting_level + 1, parent_arg_type, expecting_close_tag)?;
+            let fragment = self.parse_message(
+                nesting_level + 1,
+                parent_arg_type.to_string().as_str(),
+                expecting_close_tag,
+            )?;
             self.try_parse_argument_close(opening_brace_position)?;
 
             options.push((
@@ -1297,7 +1331,7 @@ impl<'s> Parser<'s> {
 
         if options.is_empty() {
             return Err(self.error(
-                match parent_arg_type {
+                match parent_arg_type.to_string().as_str() {
                     "select" => ErrorKind::ExpectSelectArgumentSelector,
                     _ => ErrorKind::ExpectPluralArgumentSelector,
                 },
@@ -1407,9 +1441,7 @@ impl<'s> Parser<'s> {
         Ok(())
     }
 
-    /// Advance the parser until the end of the identifier, if it is currently on
-    /// an identifier character. Return an empty string otherwise.
-    fn parse_identifier_if_possible(&self) -> (&str, Span) {
+    fn parse_identifier_if_possible_inner(&self) -> Span {
         let starting_position = self.position();
 
         while !self.is_eof() && !is_whitespace(self.char()) && !is_pattern_syntax(self.char()) {
@@ -1417,12 +1449,24 @@ impl<'s> Parser<'s> {
         }
 
         let end_position = self.position();
-        let span = Span::new(starting_position, end_position);
+        Span::new(starting_position, end_position)
+    }
 
+    /// Advance the parser until the end of the identifier, if it is currently on
+    /// an identifier character. Return an empty string otherwise.
+    #[cfg(feature = "utf16")]
+    fn parse_identifier_if_possible(&self) -> (&Utf16Str, Span) {
+        let span = self.parse_identifier_if_possible_inner();
         (
-            &self.message[starting_position.offset..end_position.offset],
+            &self.message_utf16[span.start.offset..span.end.offset],
             span,
         )
+    }
+
+    #[cfg(not(feature = "utf16"))]
+    fn parse_identifier_if_possible(&self) -> (&str, Span) {
+        let span = self.parse_identifier_if_possible_inner();
+        (&self.message[span.start.offset..span.end.offset], span)
     }
 
     fn error(&self, kind: ErrorKind, span: Span) -> ast::Error {
@@ -1448,7 +1492,15 @@ impl<'s> Parser<'s> {
     ///
     /// This panics if the given position does not point to a valid char.
     fn char_at(&self, i: usize) -> char {
-        self.message[i..]
+        #[cfg(feature = "utf16")]
+        let message = &self.message_utf16[i..].to_string();
+        #[cfg(feature = "utf16")]
+        let message = message.as_str();
+
+        #[cfg(not(feature = "utf16"))]
+        let message = &self.message[i..];
+
+        message
             .chars()
             .next()
             .unwrap_or_else(|| panic!("expected char at offset {}", i))
@@ -1471,7 +1523,15 @@ impl<'s> Parser<'s> {
         } else {
             column = column.checked_add(1).unwrap();
         }
-        offset += ch.len_utf8();
+
+        #[cfg(feature = "utf16")]
+        {
+            offset += 1;
+        }
+        #[cfg(not(feature = "utf16"))]
+        {
+            offset += ch.len_utf8();
+        }
         self.position.set(Position {
             offset,
             line,
@@ -1515,7 +1575,15 @@ impl<'s> Parser<'s> {
     /// following the prefix and return true. Otherwise, don't bump the parser
     /// and return false.
     fn bump_if(&self, prefix: &str) -> bool {
-        if self.message[self.offset()..].starts_with(prefix) {
+        #[cfg(feature = "utf16")]
+        let message = &self.message_utf16[self.offset()..].to_string();
+        #[cfg(feature = "utf16")]
+        let message = message.as_str();
+
+        #[cfg(not(feature = "utf16"))]
+        let message = &self.message[self.offset()..];
+
+        if message.starts_with(prefix) {
             for _ in 0..prefix.chars().count() {
                 self.bump();
             }
@@ -1559,7 +1627,11 @@ impl<'s> Parser<'s> {
 
     /// Returns true if the next call to `bump` would return false.
     fn is_eof(&self) -> bool {
-        self.offset() == self.message.len()
+        #[cfg(feature = "utf16")]
+        return self.offset() == self.message_utf16.len();
+
+        #[cfg(not(feature = "utf16"))]
+        return self.offset() == self.message.len();
     }
 }
 

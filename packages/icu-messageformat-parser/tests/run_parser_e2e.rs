@@ -32,12 +32,8 @@ fn read_sections<'a>(file: PathBuf) -> TestFixtureSections {
     }
 }
 
-#[fixture("tests/fixtures/trivial_2")]
-#[fixture("tests/fixtures/treat_unicode_nbsp_as_whitespace")]
-fn tests_skipped(_file: PathBuf) {
-    similar_asserts::assert_eq!(true, true);
-}
-
+#[cfg_attr(feature = "utf16", fixture("tests/fixtures/treat_unicode_nbsp_as_whitespace"))]
+#[cfg_attr(feature = "utf16", fixture("tests/fixtures/trivial_2"))]
 #[fixture("tests/fixtures/uppercase_tag_1")]
 #[fixture("tests/fixtures/expect_number_arg_skeleton_token_1")]
 #[fixture("tests/fixtures/self_closing_tag_1")]
@@ -139,7 +135,6 @@ fn tests_skipped(_file: PathBuf) {
 #[fixture("tests/fixtures/quoted_tag_1")]
 #[fixture("tests/fixtures/select_arg_1")]
 #[fixture("tests/fixtures/selectordinal_1")]
-
 fn parser_tests(file: PathBuf) {
     let fixture_sections = read_sections(file);
     let mut parser = Parser::new(
