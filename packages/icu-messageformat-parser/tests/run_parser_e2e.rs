@@ -32,14 +32,6 @@ fn read_sections<'a>(file: PathBuf) -> TestFixtureSections {
     }
 }
 
-#[fixture("tests/fixtures/date_arg_skeleton_with_capital_J")]
-#[fixture("tests/fixtures/date_arg_skeleton_with_capital_JJ")]
-#[fixture("tests/fixtures/date_arg_skeleton_with_j")]
-#[fixture("tests/fixtures/date_arg_skeleton_with_jj")]
-#[fixture("tests/fixtures/date_arg_skeleton_with_jjj")]
-#[fixture("tests/fixtures/date_arg_skeleton_with_jjjj")]
-#[fixture("tests/fixtures/date_arg_skeleton_with_jjjjj")]
-#[fixture("tests/fixtures/date_arg_skeleton_with_jjjjjj")]
 #[fixture("tests/fixtures/expect_number_arg_skeleton_token_1")]
 #[fixture("tests/fixtures/self_closing_tag_1")]
 #[fixture("tests/fixtures/self_closing_tag_2")]
@@ -50,6 +42,14 @@ fn tests_skipped(_file: PathBuf) {
     similar_asserts::assert_eq!(true, true);
 }
 
+#[fixture("tests/fixtures/date_arg_skeleton_with_j")]
+#[fixture("tests/fixtures/date_arg_skeleton_with_jj")]
+#[fixture("tests/fixtures/date_arg_skeleton_with_jjj")]
+#[fixture("tests/fixtures/date_arg_skeleton_with_jjjj")]
+#[fixture("tests/fixtures/date_arg_skeleton_with_jjjjj")]
+#[fixture("tests/fixtures/date_arg_skeleton_with_jjjjjj")]
+#[fixture("tests/fixtures/date_arg_skeleton_with_capital_J")]
+#[fixture("tests/fixtures/date_arg_skeleton_with_capital_JJ")]
 #[fixture("tests/fixtures/negative_offset_1")]
 #[fixture("tests/fixtures/simple_date_and_time_arg_1")]
 #[fixture("tests/fixtures/select_arg_with_nested_arguments")]
