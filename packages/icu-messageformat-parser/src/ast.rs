@@ -2,6 +2,8 @@ use serde::ser::{SerializeMap, SerializeStruct};
 use serde::{Serialize, Serializer};
 use serde_repr::Serialize_repr;
 use std::fmt;
+#[cfg(feature = "utf16")]
+use widestring::Utf16Str;
 
 use crate::intl::date_time_format_options::JsIntlDateTimeFormatOptions;
 use crate::intl::number_format_options::JsIntlNumberFormatOptions;
@@ -161,34 +163,34 @@ pub enum AstElement<'s> {
     /// Raw text
     Literal { value: String, span: Span },
     /// Variable w/o any format, e.g `var` in `this is a {var}`
-    Argument { value: &'s str, span: Span },
+    Argument { value: String, span: Span },
     /// Variable w/ number format
     Number {
-        value: &'s str,
+        value: String,
         span: Span,
         style: Option<NumberArgStyle<'s>>,
     },
     /// Variable w/ date format
     Date {
-        value: &'s str,
+        value: String,
         span: Span,
         style: Option<DateTimeArgStyle<'s>>,
     },
     /// Variable w/ time format
     Time {
-        value: &'s str,
+        value: String,
         span: Span,
         style: Option<DateTimeArgStyle<'s>>,
     },
     /// Variable w/ select format
     Select {
-        value: &'s str,
+        value: String,
         span: Span,
         options: PluralOrSelectOptions<'s>,
     },
     /// Variable w/ plural format
     Plural {
-        value: &'s str,
+        value: String,
         plural_type: PluralType,
         span: Span,
         // TODO: want to use double here but it does not implement Eq trait.
@@ -319,7 +321,12 @@ impl<'s> Serialize for AstElement<'s> {
     }
 }
 
+#[cfg(feature = "utf16")]
+#[derive(Clone, Debug, PartialEq)]
+pub struct PluralOrSelectOptions<'s>(pub Vec<(&'s Utf16Str, PluralOrSelectOption<'s>)>);
+
 /// Workaround of Rust's orphan impl rule
+#[cfg(not(feature = "utf16"))]
 #[derive(Clone, Debug, PartialEq)]
 pub struct PluralOrSelectOptions<'s>(pub Vec<(&'s str, PluralOrSelectOption<'s>)>);
 
@@ -331,7 +338,13 @@ impl<'s> Serialize for PluralOrSelectOptions<'s> {
         let options = &self.0;
         let mut state = serializer.serialize_map(Some(options.len()))?;
         for (selector, fragment) in options {
-            state.serialize_entry(selector, fragment)?;
+            #[cfg(feature = "utf16")]
+            let s = selector.to_string();
+            #[cfg(feature = "utf16")]
+            let s = s.as_str();
+            #[cfg(not(feature = "utf16"))]
+            let s = selector;
+            state.serialize_entry(s, fragment)?;
         }
         state.end()
     }
