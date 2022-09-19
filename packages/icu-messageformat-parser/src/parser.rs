@@ -1294,9 +1294,7 @@ impl<'s> Parser<'s> {
             ));
         }
 
-        // TODO: make this configurable
-        let requires_other_clause = false;
-        if requires_other_clause && !has_other_clause {
+        if self.options.requires_other_clause && !has_other_clause {
             return Err(self.error(
                 ErrorKind::MissingOtherClause,
                 Span::new(self.position(), self.position()),
