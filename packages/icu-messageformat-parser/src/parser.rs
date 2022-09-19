@@ -8,6 +8,7 @@ use crate::intl::options::{
     NumberFormatOptionsTrailingZeroDisplay, TimeZoneNameFormat, UnitDisplay,
 };
 use crate::pattern_syntax::is_pattern_syntax;
+use langtag::LanguageTag;
 use once_cell::sync::Lazy;
 use regex::Regex as Regexp;
 use serde::{Deserialize, Serialize};
@@ -73,11 +74,55 @@ pub struct ParserOptions {
 }
 
 fn get_default_hour_symbol_from_locale(locale: &str) -> char {
-    unimplemented!("");
+    let language_tag = LanguageTag::parse(locale).expect("Should able to parse locale tag");
+
+    // There's no built in Intl.Locale, manually read through extensions for the values we need to read
+    for extension in language_tag.extensions() {
+        //TODO: locale.hourCycles support is missing
+
+        let hour_cycle = if extension.singleton() as char == 'u' {
+            let mut ret = None;
+            let mut ext_iter = extension.iter();
+            loop {
+                let ext = ext_iter.next();
+
+                if let Some(ext) = ext {
+                    if ext == "hc" {
+                        let hour_cycle = ext_iter.next().expect("Should have hour cycle");
+                        ret = match hour_cycle.as_str() {
+                            "h11" => Some(HourCycle::H11),
+                            "h12" => Some(HourCycle::H12),
+                            "h23" => Some(HourCycle::H23),
+                            "h24" => Some(HourCycle::H24),
+                            _ => None,
+                        };
+                    }
+                } else {
+                    break;
+                }
+            }
+            ret
+        } else {
+            None
+        };
+
+        if let Some(hour_cycle) = hour_cycle {
+            return match hour_cycle {
+                HourCycle::H11 => 'K',
+                HourCycle::H12 => 'h',
+                HourCycle::H23 => 'H',
+                HourCycle::H24 => 'k',
+            };
+        }
+
+        //TODO: locale.language data generation
+    }
+
+    panic!("Should have hour cycle");
 }
 
 fn get_best_pattern(skeleton: &str, locale: &str) -> String {
-    let mut ret = skeleton.to_string();
+    let mut ret = "".to_string();
 
     let skeleton_chars: Vec<_> = skeleton.chars().collect();
     let skeleton_char_len = skeleton_chars.len();
@@ -126,9 +171,8 @@ fn get_best_pattern(skeleton: &str, locale: &str) -> String {
 
 fn parse_date_time_skeleton(skeleton: &str) -> JsIntlDateTimeFormatOptions {
     let mut ret = JsIntlDateTimeFormatOptions::default();
-    let caps = DATE_TIME_REGEX.captures(skeleton);
 
-    if let Some(caps) = caps {
+    for caps in DATE_TIME_REGEX.captures_iter(skeleton) {
         let match_str = caps.get(0).map(|m| m.as_str()).unwrap_or_default();
         let match_len = match_str.len();
 
