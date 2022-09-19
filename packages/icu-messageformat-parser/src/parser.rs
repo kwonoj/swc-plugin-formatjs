@@ -73,6 +73,10 @@ pub struct ParserOptions {
     locale: Option<String>,
 }
 
+fn is_whitespace(ch: char) -> bool {
+    ch.is_whitespace() || ch == '\u{200e}' || ch == '\u{200f}'
+}
+
 fn get_default_hour_symbol_from_locale(locale: &str) -> char {
     let language_tag = LanguageTag::parse(locale).expect("Should able to parse locale tag");
 
@@ -721,10 +725,9 @@ impl<'s> Parser<'s> {
 
         if self.bump_if("/>") {
             // Self closing tag
-            Ok(AstElement::Tag {
-                value: tag_name,
+            Ok(AstElement::Literal {
+                value: format!("<{}/>", tag_name),
                 span: Span::new(start_position, self.position()),
-                children: Box::new(vec![]),
             })
         } else if self.bump_if(">") {
             let children = self.parse_message(nesting_level + 1, parent_arg_type, true)?;
@@ -1401,7 +1404,7 @@ impl<'s> Parser<'s> {
     fn parse_identifier_if_possible(&self) -> (&str, Span) {
         let starting_position = self.position();
 
-        while !self.is_eof() && !self.char().is_whitespace() && !is_pattern_syntax(self.char()) {
+        while !self.is_eof() && !is_whitespace(self.char()) && !is_pattern_syntax(self.char()) {
             self.bump();
         }
 
@@ -1529,7 +1532,7 @@ impl<'s> Parser<'s> {
 
     /// advance the parser through all whitespace to the next non-whitespace byte.
     fn bump_space(&self) {
-        while !self.is_eof() && self.char().is_whitespace() {
+        while !self.is_eof() && is_whitespace(self.char()) {
             self.bump();
         }
     }
