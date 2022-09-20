@@ -125,7 +125,7 @@ export const transform = (
     ],
   };
 
-  return transformSync(code, options).code;
+  return transformSync(code, options);
 };
 
 export function transformAndCheck(fn: string, opts: Options = {}) {
@@ -142,8 +142,10 @@ export function transformAndCheck(fn: string, opts: Options = {}) {
       Object.assign(meta, m)
     },
   })
-  expect({
+
+
+  return {
     data: { messages, meta },
     code: code?.trim(),
-  }).toMatchSnapshot()
+  };
 }

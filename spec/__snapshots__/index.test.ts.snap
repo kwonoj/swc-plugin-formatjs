@@ -468,23 +468,6 @@ export default class Foo extends Component {
 }
 `;
 
-exports[`empty 1`] = `
-Object {
-  "code": "import React, { Component } from 'react';
-import { defineMessage } from 'react-intl';
-export default class Foo extends Component {
-  render() {
-    return /*#__PURE__*/React.createElement(\\"div\\", null);
-  }
-
-}",
-  "data": Object {
-    "messages": Array [],
-    "meta": Object {},
-  },
-}
-`;
-
 exports[`extractFromFormatMessageCall 1`] = `
 Object {
   "code": "import { FormattedMessage, injectIntl } from 'react-intl';

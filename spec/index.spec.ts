@@ -1,72 +1,90 @@
-import { test } from '@jest/globals';
-import * as path from 'path'
-import { ExtractedMessageDescriptor, transform, transformAndCheck } from './transform';
+import { test } from "@jest/globals";
+import * as path from "path";
+import {
+  ExtractedMessageDescriptor,
+  transform,
+  transformAndCheck,
+} from "./transform";
 
-test.skip('additionalComponentNames', function () {
-  transformAndCheck('additionalComponentNames', {
-    additionalComponentNames: ['CustomMessage'],
-  })
-})
+test.skip("additionalComponentNames", function () {
+  transformAndCheck("additionalComponentNames", {
+    additionalComponentNames: ["CustomMessage"],
+  });
+});
 
-test.skip('additionalFunctionNames', function () {
-  transformAndCheck('additionalFunctionNames', {
-    additionalFunctionNames: ['t'],
-  })
-})
+test.skip("additionalFunctionNames", function () {
+  transformAndCheck("additionalFunctionNames", {
+    additionalFunctionNames: ["t"],
+  });
+});
 
-test.skip('ast', function () {
-  transformAndCheck('ast', {
+test.skip("ast", function () {
+  transformAndCheck("ast", {
     ast: true,
-  })
-})
+  });
+});
 
-test.skip('defineMessage', function () {
-  transformAndCheck('defineMessage')
-})
+test.skip("defineMessage", function () {
+  transformAndCheck("defineMessage");
+});
 
-test.skip('descriptionsAsObjects', function () {
-  transformAndCheck('descriptionsAsObjects')
-})
+test.skip("descriptionsAsObjects", function () {
+  transformAndCheck("descriptionsAsObjects");
+});
 
-test.skip('defineMessages', function () {
-  transformAndCheck('defineMessages')
-})
-test.skip('empty', function () {
-  transformAndCheck('empty')
-})
-test.skip('extractFromFormatMessageCall', function () {
-  transformAndCheck('extractFromFormatMessageCall')
-})
-test.skip('extractFromFormatMessageCallStateless', function () {
-  transformAndCheck('extractFromFormatMessageCallStateless')
-})
-test.skip('formatMessageCall', function () {
-  transformAndCheck('formatMessageCall')
-})
-test.skip('FormattedMessage', function () {
-  transformAndCheck('FormattedMessage')
-})
-test.skip('inline', function () {
-  transformAndCheck('inline')
-})
-test.skip('templateLiteral', function () {
-  transformAndCheck('templateLiteral')
-})
+test.skip("defineMessages", function () {
+  transformAndCheck("defineMessages");
+});
+test("empty", function () {
+  expect(transformAndCheck("empty")).toMatchInlineSnapshot(`
+    {
+      "code": "import React, { Component } from 'react';
+    import { defineMessage } from 'react-intl';
+    export default class Foo extends Component {
+        render() {
+            return /*#__PURE__*/ React.createElement("div", null);
+        }
+    }",
+      "data": {
+        "messages": [],
+        "meta": {},
+      },
+    }
+  `);
+});
+test.skip("extractFromFormatMessageCall", function () {
+  transformAndCheck("extractFromFormatMessageCall");
+});
+test.skip("extractFromFormatMessageCallStateless", function () {
+  transformAndCheck("extractFromFormatMessageCallStateless");
+});
+test.skip("formatMessageCall", function () {
+  transformAndCheck("formatMessageCall");
+});
+test.skip("FormattedMessage", function () {
+  transformAndCheck("FormattedMessage");
+});
+test.skip("inline", function () {
+  transformAndCheck("inline");
+});
+test.skip("templateLiteral", function () {
+  transformAndCheck("templateLiteral");
+});
 
-test.skip('idInterpolationPattern', function () {
-  transformAndCheck('idInterpolationPattern', {
-    idInterpolationPattern: '[folder].[name].[sha512:contenthash:hex:6]',
-  })
-})
+test.skip("idInterpolationPattern", function () {
+  transformAndCheck("idInterpolationPattern", {
+    idInterpolationPattern: "[folder].[name].[sha512:contenthash:hex:6]",
+  });
+});
 
-test.skip('idInterpolationPattern default', function () {
-  transformAndCheck('idInterpolationPattern')
-})
+test.skip("idInterpolationPattern default", function () {
+  transformAndCheck("idInterpolationPattern");
+});
 
-test.skip('GH #2663', function () {
-  const filePath = path.join(__dirname, 'fixtures', `2663.js`)
-  const messages: ExtractedMessageDescriptor[] = []
-  const meta = {}
+test.skip("GH #2663", function () {
+  const filePath = path.join(__dirname, "fixtures", `2663.js`);
+  const messages: ExtractedMessageDescriptor[] = [];
+  const meta = {};
 
   /*
   const { code } = transformFileSync(filePath, {
@@ -88,33 +106,35 @@ test.skip('GH #2663', function () {
     ],
   })!*/
 
-  const code = 'tbd'
+  const code = "tbd";
   expect({
     data: { messages, meta },
     code: code?.trim(),
-  }).toMatchSnapshot()
-})
+  }).toMatchSnapshot();
+});
 
-test.skip('overrideIdFn', function () {
-  transformAndCheck('overrideIdFn', {
+test.skip("overrideIdFn", function () {
+  transformAndCheck("overrideIdFn", {
     overrideIdFn: (
       id?: string,
       defaultMessage?: string,
       description?: string,
       filePath?: string
     ) => {
-      const filename = path.basename(filePath!)
-      return `${filename}.${id}.${defaultMessage!.length}.${typeof description}`
+      const filename = path.basename(filePath!);
+      return `${filename}.${id}.${
+        defaultMessage!.length
+      }.${typeof description}`;
     },
-  })
-})
-test.skip('removeDefaultMessage', function () {
-  transformAndCheck('removeDefaultMessage', {
+  });
+});
+test.skip("removeDefaultMessage", function () {
+  transformAndCheck("removeDefaultMessage", {
     removeDefaultMessage: true,
-  })
-})
-test.skip('removeDefaultMessage + overrideIdFn', function () {
-  transformAndCheck('removeDefaultMessage', {
+  });
+});
+test.skip("removeDefaultMessage + overrideIdFn", function () {
+  transformAndCheck("removeDefaultMessage", {
     removeDefaultMessage: true,
     overrideIdFn: (
       id?: string,
@@ -122,50 +142,49 @@ test.skip('removeDefaultMessage + overrideIdFn', function () {
       description?: string,
       filePath?: string
     ) => {
-      const filename = path.basename(filePath!)
-      return `${filename}.${id}.${defaultMessage!.length}.${typeof description}`
+      const filename = path.basename(filePath!);
+      return `${filename}.${id}.${
+        defaultMessage!.length
+      }.${typeof description}`;
     },
-  })
-})
-test.skip('preserveWhitespace', function () {
-  transformAndCheck('preserveWhitespace', {
+  });
+});
+test.skip("preserveWhitespace", function () {
+  transformAndCheck("preserveWhitespace", {
     preserveWhitespace: true,
-  })
-})
+  });
+});
 
-test.skip('extractSourceLocation', function () {
-  const filePath = path.join(__dirname, 'fixtures', 'extractSourceLocation.js')
-  const messages: ExtractedMessageDescriptor[] = []
-  const meta = {}
+test.skip("extractSourceLocation", function () {
+  const filePath = path.join(__dirname, "fixtures", "extractSourceLocation.js");
+  const messages: ExtractedMessageDescriptor[] = [];
+  const meta = {};
 
   const { code } = transform(filePath, undefined, {
-    pragma: '@react-intl',
+    pragma: "@react-intl",
     extractSourceLocation: true,
     onMsgExtracted(_, msgs) {
-      messages.push(...msgs)
+      messages.push(...msgs);
     },
     onMetaExtracted(_, m) {
-      Object.assign(meta, m)
+      Object.assign(meta, m);
     },
-  })
-  expect(code?.trim()).toMatchSnapshot()
+  });
+  expect(code?.trim()).toMatchSnapshot();
   expect(messages).toMatchSnapshot([
     {
       file: expect.any(String),
     },
-  ])
-  expect(meta).toMatchSnapshot()
-})
+  ]);
+  expect(meta).toMatchSnapshot();
+});
 
-test.skip('Properly throws parse errors', () => {
+test.skip("Properly throws parse errors", () => {
   expect(() =>
-    transform(path.join(__dirname, 'fixtures', 'icuSyntax.js'))
-  ).toThrow('SyntaxError: MALFORMED_ARGUMENT')
-})
+    transform(path.join(__dirname, "fixtures", "icuSyntax.js"))
+  ).toThrow("SyntaxError: MALFORMED_ARGUMENT");
+});
 
-test.skip('skipExtractionFormattedMessage', function () {
-  transformAndCheck('skipExtractionFormattedMessage')
-})
-
-
-
+test.skip("skipExtractionFormattedMessage", function () {
+  transformAndCheck("skipExtractionFormattedMessage");
+});
