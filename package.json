@@ -32,9 +32,10 @@
     "build:all": "npm-run-all build:customtransform build:plugin",
     "build:customtransform": "napi build --platform --cargo-cwd ./spec/swc-formatjs-custom-transform",
     "build:plugin": "cargo build -p swc-plugin-formatjs --target wasm32-wasi",
+    "test:package": "cargo test",
     "test:plugin": "npm-run-all build:plugin && jest",
     "test:customtransform": "npm-run-all build:customtransform && cross-env SWC_TRANSFORM_CUSTOM=1 jest",
-    "test": "npm-run-all test:plugin test:customtransform",
+    "test": "npm-run-all test:*",
     "prepare": "husky install"
   },
   "repository": {
