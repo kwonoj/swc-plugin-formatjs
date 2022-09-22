@@ -61,14 +61,64 @@ test.skip("extractFromFormatMessageCallStateless", function () {
 test.skip("formatMessageCall", function () {
   transformAndCheck("formatMessageCall");
 });
-test.skip("FormattedMessage", function () {
-  transformAndCheck("FormattedMessage");
+test("FormattedMessage", function () {
+  expect(transformAndCheck("FormattedMessage")).toMatchInlineSnapshot(`
+    {
+      "code": "import React, { Component } from 'react';
+    import { FormattedMessage } from 'react-intl';
+    export default class Foo extends Component {
+        render() {
+            return /*#__PURE__*/ React.createElement(FormattedMessage, {
+                id: "foo.bar.baz",
+                defaultMessage: "Hello World!"
+            });
+        }
+    }",
+      "data": {
+        "messages": [{
+          defaultMessage: "Hello World!",
+          description: "The default message.",
+          id: "foo.bar.baz",
+        }],
+        "meta": {},
+      },
+    }
+  `);
 });
 test.skip("inline", function () {
   transformAndCheck("inline");
 });
 test.skip("templateLiteral", function () {
-  transformAndCheck("templateLiteral");
+  expect(transformAndCheck("templateLiteral")).toMatchInlineSnapshot(`
+    {
+      "code": "import React, { Component } from 'react';
+    import { FormattedMessage, defineMessage } from 'react-intl';
+    defineMessage({
+        id: \`template\`,
+        defaultMessage: \`should remove newline and extra spaces\`
+    });
+    export default class Foo extends Component {
+        render() {
+            return /*#__PURE__*/ React.createElement(FormattedMessage, {
+                id: "foo.bar.baz",
+                defaultMessage: \`Hello World!\`
+            });
+        }
+    }",
+      "data": {
+        "messages": [{
+          "defaultMessage": "should remove newline and extra spaces",
+          "description": undefined,
+          "id": "template",
+        }, {
+          "defaultMessage": "Hello World!",
+          "description": "The default message.",
+          "id": "foo.bar.baz",
+        }],
+        "meta": {},
+      },
+    }
+  `);
 });
 
 test.skip("idInterpolationPattern", function () {
