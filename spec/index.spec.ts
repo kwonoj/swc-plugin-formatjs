@@ -75,11 +75,13 @@ test("FormattedMessage", function () {
         }
     }",
       "data": {
-        "messages": [{
-          defaultMessage: "Hello World!",
-          description: "The default message.",
-          id: "foo.bar.baz",
-        }],
+        "messages": [
+          {
+            "defaultMessage": "Hello World!",
+            "description": "The default message.",
+            "id": "foo.bar.baz",
+          },
+        ],
         "meta": {},
       },
     }

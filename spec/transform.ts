@@ -97,6 +97,12 @@ export const transform = (
     },
   };
 
+  const testPluginOptions = {
+    ...pluginOptions,
+    pragma: '@react-intl',
+    debugExtractedMessagesComment: true,
+  }
+
   if (process.env.SWC_TRANSFORM_CUSTOM === "1") {
     const { transformSync } = require("../../index");
     return transformSync(
@@ -104,11 +110,9 @@ export const transform = (
       true,
       Buffer.from(JSON.stringify(options)),
       Buffer.from(
-        JSON.stringify({
-          ...pluginOptions,
-          pragma: '@react-intl',
-          debugInitialCoverageComment: true,
-        })
+        JSON.stringify(
+          testPluginOptions
+        )
       )
     ).code;
   }
@@ -117,10 +121,7 @@ export const transform = (
     plugins: [
       [
         pluginBinary,
-        {
-          pragma: '@react-intl',
-          ...pluginOptions,
-        },
+        testPluginOptions
       ],
     ],
   };
@@ -130,22 +131,17 @@ export const transform = (
 
 export function transformAndCheck(fn: string, opts: Options = {}) {
   const filePath = path.join(__dirname, 'fixtures', `${fn}.js`)
-  const messages: ExtractedMessageDescriptor[] = []
-  const meta = {}
   const { code } = transform(filePath, undefined, {
     pragma: '@react-intl',
     ...opts,
-    onMsgExtracted(_, msgs) {
-      messages.push(...msgs)
-    },
-    onMetaExtracted(_, m) {
-      Object.assign(meta, m)
-    },
   })
 
 
+  const [ret, comments] = code.split('/*__formatjs__messages_extracted__::');
+  const data = JSON.parse(comments.substring(0, comments.indexOf('*/')));
+
   return {
-    data: { messages, meta },
-    code: code?.trim(),
+    data,
+    code: ret?.trim(),
   };
 }
