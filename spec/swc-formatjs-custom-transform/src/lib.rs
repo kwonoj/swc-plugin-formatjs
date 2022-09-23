@@ -14,13 +14,13 @@ use backtrace::Backtrace;
 
 use swc_core::{
     base::{config::Options, Compiler, TransformOutput},
-    common::{sync::Lazy, FileName, FilePathMapping, SourceMap},
+    common::{comments::Comments, sync::Lazy, FileName, FilePathMapping, SourceMap},
     ecma::{
         transforms::base::pass::noop,
         visit::{as_folder, Fold},
     },
 };
-use swc_formatjs_visitor::create_formatjs_visitor;
+use swc_formatjs_visitor::{create_formatjs_visitor, FormatJSPluginOptions};
 
 use std::path::Path;
 
@@ -71,7 +71,7 @@ pub fn transform_sync(
     s: String,
     _is_module: bool,
     opts: Buffer,
-    _instrument_opts: Buffer,
+    instrument_opts: Buffer,
 ) -> napi::Result<TransformOutput> {
     let c = get_compiler();
 
@@ -91,13 +91,22 @@ pub fn transform_sync(
                     FileName::Real(options.filename.clone().into())
                 };
 
+                let formatjs_option: FormatJSPluginOptions = get_deserialized(&instrument_opts)?;
+
                 let fm = c.cm.new_source_file(filename.clone(), s);
                 c.process_js_with_custom_pass(
                     fm,
                     None,
                     handler,
                     &options,
-                    |_program, _comments| formatjs(),
+                    |_program, comments| {
+                        formatjs(
+                            c.cm.clone(),
+                            comments.clone(),
+                            formatjs_option,
+                            options.filename.as_str(),
+                        )
+                    },
                     |_, _| noop(),
                 )
             })
@@ -106,8 +115,17 @@ pub fn transform_sync(
     .convert_err()
 }
 
-fn formatjs<'a>() -> impl Fold + 'a {
-    let visitor = create_formatjs_visitor();
+fn formatjs<
+    'a,
+    C: Comments + 'a + std::clone::Clone,
+    S: 'a + swc_core::common::errors::SourceMapper,
+>(
+    source_map: std::sync::Arc<S>,
+    comments: C,
+    plugin_options: FormatJSPluginOptions,
+    filename: &str,
+) -> impl Fold + 'a {
+    let visitor = create_formatjs_visitor(source_map, comments, plugin_options, filename);
 
     as_folder(visitor)
 }

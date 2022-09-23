@@ -104,7 +104,7 @@ export const transform = (
   }
 
   if (process.env.SWC_TRANSFORM_CUSTOM === "1") {
-    const { transformSync } = require("../../index");
+    const { transformSync } = require("../index");
     return transformSync(
       code,
       true,
@@ -114,7 +114,7 @@ export const transform = (
           testPluginOptions
         )
       )
-    ).code;
+    );
   }
 
   options.jsc!.experimental = {
