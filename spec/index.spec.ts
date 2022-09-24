@@ -207,7 +207,45 @@ test.skip("preserveWhitespace", function () {
   });
 });
 
-test.skip("extractSourceLocation", function () {
+test("extractSourceLocation", function () {
+  const { data, code } = transformAndCheck("extractSourceLocation", {
+    extractSourceLocation: true,
+  });
+
+  expect(code).toMatchInlineSnapshot(`
+    "import React, { Component } from 'react';
+    import { FormattedMessage } from 'react-intl';
+    export default class Foo extends Component {
+        render() {
+            return /*#__PURE__*/ React.createElement(FormattedMessage, {
+                id: "foo.bar.baz",
+                defaultMessage: "Hello World!"
+            });
+        }
+    }"
+  `);
+
+  expect(data.messages).toMatchInlineSnapshot(`
+    [
+      {
+        "defaultMessage": "Hello World!",
+        "id": "foo.bar.baz",
+        "loc": {
+          "end": {
+            "col": 78,
+            "line": 6,
+          },
+          "file": "${__dirname}/fixtures/extractSourceLocation.js",
+          "start": {
+            "col": 11,
+            "line": 6,
+          },
+        },
+      },
+    ]
+  `);
+  expect(data.meta).toMatchInlineSnapshot(`{}`);
+  /*
   const filePath = path.join(__dirname, "fixtures", "extractSourceLocation.js");
   const messages: ExtractedMessageDescriptor[] = [];
   const meta = {};
@@ -215,12 +253,6 @@ test.skip("extractSourceLocation", function () {
   const { code } = transform(filePath, undefined, {
     pragma: "@react-intl",
     extractSourceLocation: true,
-    onMsgExtracted(_, msgs) {
-      messages.push(...msgs);
-    },
-    onMetaExtracted(_, m) {
-      Object.assign(meta, m);
-    },
   });
   expect(code?.trim()).toMatchSnapshot();
   expect(messages).toMatchSnapshot([
@@ -228,7 +260,7 @@ test.skip("extractSourceLocation", function () {
       file: expect.any(String),
     },
   ]);
-  expect(meta).toMatchSnapshot();
+  expect(meta).toMatchSnapshot();*/
 });
 
 test.skip("Properly throws parse errors", () => {
