@@ -6,6 +6,8 @@ import {
   transformAndCheck,
 } from "./transform";
 
+const getFixturePath = (fixtureName: string) => path.resolve(__dirname, 'fixtures', fixtureName);
+
 test("additionalComponentNames", function () {
   expect(
     transformAndCheck("additionalComponentNames", {
@@ -260,7 +262,7 @@ test("extractSourceLocation", function () {
             "col": 78,
             "line": 6,
           },
-          "file": "${__dirname}/fixtures/extractSourceLocation.js",
+          "file": "${getFixturePath("extractSourceLocation.js")}",
           "start": {
             "col": 11,
             "line": 6,
