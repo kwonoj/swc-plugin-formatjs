@@ -6,10 +6,35 @@ import {
   transformAndCheck,
 } from "./transform";
 
-test.skip("additionalComponentNames", function () {
-  transformAndCheck("additionalComponentNames", {
-    additionalComponentNames: ["CustomMessage"],
-  });
+test("additionalComponentNames", function () {
+  expect(
+    transformAndCheck("additionalComponentNames", {
+      additionalComponentNames: ["CustomMessage"],
+    })
+  ).toMatchInlineSnapshot(`
+    {
+      "code": "import React, { Component } from 'react';
+    function CustomMessage() {}
+    export default class Foo extends Component {
+        render() {
+            return /*#__PURE__*/ React.createElement(CustomMessage, {
+                id: "greeting-world",
+                defaultMessage: "Hello World!"
+            });
+        }
+    }",
+      "data": {
+        "messages": [
+          {
+            "defaultMessage": "Hello World!",
+            "description": "Greeting to the world",
+            "id": "greeting-world",
+          },
+        ],
+        "meta": {},
+      },
+    }
+  `);
 });
 
 test.skip("additionalFunctionNames", function () {

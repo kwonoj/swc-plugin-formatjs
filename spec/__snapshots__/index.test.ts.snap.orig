@@ -81,34 +81,6 @@ function _error() {
 }
 `;
 
-exports[`additionalComponentNames 1`] = `
-Object {
-  "code": "import React, { Component } from 'react';
-
-function CustomMessage() {}
-
-export default class Foo extends Component {
-  render() {
-    return /*#__PURE__*/React.createElement(CustomMessage, {
-      id: \\"greeting-world\\",
-      defaultMessage: \\"Hello World!\\"
-    });
-  }
-
-}",
-  "data": Object {
-    "messages": Array [
-      Object {
-        "defaultMessage": "Hello World!",
-        "description": "Greeting to the world",
-        "id": "greeting-world",
-      },
-    ],
-    "meta": Object {},
-  },
-}
-`;
-
 exports[`additionalFunctionNames 1`] = `
 Object {
   "code": "// @react-intl project:foo
