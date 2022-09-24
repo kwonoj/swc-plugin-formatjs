@@ -28,7 +28,7 @@ pub struct FormatJSPluginOptions {
     pub ast: bool,
     pub extract_source_location: bool,
     pub preserve_whitespace: bool,
-    pub __debug_extracted_messages_comment: bool
+    pub __debug_extracted_messages_comment: bool,
 }
 
 type Unknown = String;
@@ -295,7 +295,7 @@ fn store_message(
     messages: &mut Vec<ExtractedMessage>,
     descriptor: &MessageDescriptor,
     filename: &str,
-    location: Option<Loc>,
+    location: Option<(Loc, Loc)>,
 ) {
     if descriptor.id.is_none() || descriptor.default_message.is_none() {
         // TODO: should use error emitter
@@ -303,11 +303,19 @@ fn store_message(
     }
 
     let source_location = if let Some(location) = location {
+        let (start, end) = location;
+
+        // NOTE: this is not fully identical to babel's test snapshot output
         Some(SourceLocation {
             file: filename.to_string(),
-            line: location.line,
-            col: location.col.to_usize(),
-            col_display: location.col_display,
+            start: Location {
+                line: start.line,
+                col: start.col.to_usize(),
+            },
+            end: Location {
+                line: end.line,
+                col: end.col.to_usize(),
+            },
         })
     } else {
         None
@@ -340,9 +348,15 @@ pub struct ExtractedMessage {
 #[serde(rename_all = "camelCase")]
 pub struct SourceLocation {
     pub file: String,
+    pub start: Location,
+    pub end: Location,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Location {
     pub line: usize,
     pub col: usize,
-    pub col_display: usize,
 }
 
 pub struct FormatJSVisitor<C: Clone + Comments, S: SourceMapper> {
@@ -379,11 +393,13 @@ impl<C: Clone + Comments, S: SourceMapper> VisitMut for FormatJSVisitor<C, S> {
             evaluate_jsx_message_descriptor(&descriptor_path, &self.options, &self.filename);
 
         let source_location = if self.options.extract_source_location {
-            Some(self.source_map.lookup_char_pos(jsx_opening_elem.span.lo))
+            Some((
+                self.source_map.lookup_char_pos(jsx_opening_elem.span.lo),
+                self.source_map.lookup_char_pos(jsx_opening_elem.span.hi),
+            ))
         } else {
             None
         };
-
 
         store_message(
             &mut self.messages,
@@ -482,7 +498,11 @@ impl<C: Clone + Comments, S: SourceMapper> VisitMut for FormatJSVisitor<C, S> {
                 Comment {
                     kind: CommentKind::Block,
                     span: Span::dummy_with_cmt(),
-                    text: format!("__formatjs__messages_extracted__::{{\"messages\":{}, \"meta\":{{}}}}", messages_json_str).into(),
+                    text: format!(
+                        "__formatjs__messages_extracted__::{{\"messages\":{}, \"meta\":{{}}}}",
+                        messages_json_str
+                    )
+                    .into(),
                 },
             );
         }
