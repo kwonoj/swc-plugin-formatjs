@@ -1,17 +1,20 @@
+use std::collections::HashMap;
+
 use icu_messageformat_parser::{Parser, ParserOptions};
 use once_cell::sync::Lazy;
 use regex::Regex as Regexp;
-use serde::{Deserialize, Serialize};
+use serde::{ser::SerializeMap, Deserialize, Serialize};
 use swc_core::{
     common::{
         comments::{Comment, CommentKind, Comments},
         source_map::Pos,
-        Loc, SourceMapper, Span, DUMMY_SP,
+        BytePos, Loc, SourceMapper, Span, Spanned, DUMMY_SP,
     },
     ecma::{
         ast::{
             Expr, Ident, JSXAttr, JSXAttrName, JSXAttrOrSpread, JSXAttrValue, JSXExpr,
-            JSXNamespacedName, JSXOpeningElement, Lit, ModuleItem, Stmt, Str,
+            JSXNamespacedName, JSXOpeningElement, Lit, ModuleItem, ObjectLit, Prop, PropName,
+            PropOrSpread, Str,
         },
         visit::{noop_visit_mut_type, VisitMut, VisitMutWith},
     },
@@ -44,7 +47,7 @@ pub struct JSXMessageDescriptorPath {
 pub struct MessageDescriptor {
     id: Option<String>,
     default_message: Option<String>,
-    description: Option<String>,
+    description: Option<MessageDescriptionValue>,
 }
 
 fn get_message_descriptor_key_from_jsx(name: &JSXAttrName) -> &str {
@@ -118,6 +121,114 @@ fn get_jsx_message_descriptor_value(
         }
         JSXAttrValue::Lit(lit) => match &lit {
             Lit::Str(str) => Some(str.value.to_string()),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub enum MessageDescriptionValue {
+    Str(String),
+    Obj(ObjectLit),
+}
+
+impl Serialize for MessageDescriptionValue {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            MessageDescriptionValue::Str(str) => serializer.serialize_str(str),
+            // NOTE: this is good enough to barely pass key-value object serialization. Not a complete implementation.
+            MessageDescriptionValue::Obj(obj) => {
+                let mut state = serializer.serialize_map(Some(obj.props.len()))?;
+                for prop in &obj.props {
+                    match prop {
+                        PropOrSpread::Prop(prop) => {
+                            match &**prop {
+                                Prop::KeyValue(key_value) => {
+                                    let key = match &key_value.key {
+                                        PropName::Ident(ident) => ident.sym.to_string(),
+                                        PropName::Str(str) => str.value.to_string(),
+                                        _ => {
+                                            //unexpected
+                                            continue;
+                                        }
+                                    };
+                                    let value = match &*key_value.value {
+                                        Expr::Lit(lit) => match &lit {
+                                            Lit::Str(str) => str.value.to_string(),
+                                            _ => {
+                                                //unexpected
+                                                continue;
+                                            }
+                                        },
+                                        _ => {
+                                            //unexpected
+                                            continue;
+                                        }
+                                    };
+                                    state.serialize_entry(&key, &value)?;
+                                }
+                                _ => {
+                                    //unexpected
+                                    continue;
+                                }
+                            }
+                        }
+                        _ => {
+                            //unexpected
+                            continue;
+                        }
+                    }
+                }
+                state.end()
+            }
+        }
+    }
+}
+
+// NOTE: due to not able to support static evaluation, this
+// fn manually expands possible values for the description values
+// from string to object.
+fn get_jsx_message_descriptor_value_maybe_object(
+    value: &Option<JSXAttrValue>,
+    is_message_node: Option<bool>,
+) -> Option<MessageDescriptionValue> {
+    if value.is_none() {
+        return None;
+    }
+    let value = value.as_ref().expect("Should be available");
+
+    // NOTE: do not support evaluatePath
+    match value {
+        JSXAttrValue::JSXExprContainer(container) => {
+            if is_message_node.unwrap_or(false) {
+                if let JSXExpr::Expr(expr) = &container.expr {
+                    // If this is already compiled, no need to recompiled it
+                    if let Expr::Array(..) = &**expr {
+                        return None;
+                    }
+                }
+            }
+
+            return match &container.expr {
+                JSXExpr::Expr(expr) => match &**expr {
+                    Expr::Lit(lit) => match &lit {
+                        Lit::Str(str) => Some(MessageDescriptionValue::Str(str.value.to_string())),
+                        _ => None,
+                    },
+                    Expr::Object(object_lit) => {
+                        Some(MessageDescriptionValue::Obj(object_lit.clone()))
+                    }
+                    _ => None,
+                },
+                _ => None,
+            };
+        }
+        JSXAttrValue::Lit(lit) => match &lit {
+            Lit::Str(str) => Some(MessageDescriptionValue::Str(str.value.to_string())),
             _ => None,
         },
         _ => None,
@@ -264,14 +375,17 @@ fn evaluate_jsx_message_descriptor(
         options.preserve_whitespace,
     );
 
-    let description = get_jsx_message_descriptor_value(&descriptor_path.description, None);
-
-    println!("{:#?} {:#?}", id, description);
+    let description =
+        get_jsx_message_descriptor_value_maybe_object(&descriptor_path.description, None);
 
     // Note: do not support override fn
     let id = if id.is_some() && options.id_interpolate_pattern.is_some() && default_message != "" {
         let content = if let Some(description) = &description {
-            format!("{}#{}", default_message, description)
+            if let MessageDescriptionValue::Str(description) = description {
+                format!("{}{}", default_message, description)
+            } else {
+                default_message.clone()
+            }
         } else {
             default_message.clone()
         };
@@ -338,7 +452,7 @@ fn store_message(
 pub struct ExtractedMessage {
     pub id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
+    pub description: Option<MessageDescriptionValue>,
     pub default_message: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub loc: Option<SourceLocation>,
@@ -367,6 +481,33 @@ pub struct FormatJSVisitor<C: Clone + Comments, S: SourceMapper> {
     options: FormatJSPluginOptions,
     filename: String,
     messages: Vec<ExtractedMessage>,
+    meta: HashMap<String, String>,
+}
+
+impl<C: Clone + Comments, S: SourceMapper> FormatJSVisitor<C, S> {
+    fn read_pragma(&mut self, span_lo: BytePos, span_hi: BytePos) {
+        let mut comments = self.comments.get_leading(span_lo).unwrap_or_default();
+        comments.append(&mut self.comments.get_leading(span_hi).unwrap_or_default());
+
+        let pragma = self.options.pragma.as_str();
+
+        for comment in comments {
+            let comment_text = &*comment.text;
+            if comment_text.contains(pragma) {
+                let value = comment_text.split(pragma).nth(1);
+                if let Some(value) = value {
+                    let value = WHITESPACE_REGEX.split(value.trim());
+                    for kv in value {
+                        let mut kv = kv.split(":");
+                        self.meta.insert(
+                            kv.next().unwrap().to_string(),
+                            kv.next().unwrap().to_string(),
+                        );
+                    }
+                }
+            }
+        }
+    }
 }
 
 impl<C: Clone + Comments, S: SourceMapper> VisitMut for FormatJSVisitor<C, S> {
@@ -482,12 +623,14 @@ impl<C: Clone + Comments, S: SourceMapper> VisitMut for FormatJSVisitor<C, S> {
         */
 
         for item in items {
+            self.read_pragma(item.span().lo, item.span().hi);
             item.visit_mut_children_with(self);
         }
 
         if self.options.__debug_extracted_messages_comment {
             let messages_json_str =
                 serde_json::to_string(&self.messages).expect("Should be serializable");
+            let meta_json_str = serde_json::to_string(&self.meta).expect("Should be serializable");
 
             // Append extracted messages to the end of the file as stringified JSON comments.
             // SWC's plugin does not support to return aribitary data other than transformed codes,
@@ -499,8 +642,8 @@ impl<C: Clone + Comments, S: SourceMapper> VisitMut for FormatJSVisitor<C, S> {
                     kind: CommentKind::Block,
                     span: Span::dummy_with_cmt(),
                     text: format!(
-                        "__formatjs__messages_extracted__::{{\"messages\":{}, \"meta\":{{}}}}",
-                        messages_json_str
+                        "__formatjs__messages_extracted__::{{\"messages\":{}, \"meta\":{}}}",
+                        messages_json_str, meta_json_str
                     )
                     .into(),
                 },
@@ -520,6 +663,7 @@ pub fn create_formatjs_visitor<C: Clone + Comments, S: SourceMapper>(
         comments,
         options: plugin_options,
         filename: filename.to_string(),
-        messages: vec![],
+        messages: Default::default(),
+        meta: Default::default(),
     }
 }
