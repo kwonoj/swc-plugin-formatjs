@@ -6,7 +6,8 @@ import {
   transformAndCheck,
 } from "./transform";
 
-const getFixturePath = (fixtureName: string) => path.resolve(__dirname, 'fixtures', fixtureName);
+const getFixturePath = (fixtureName: string) =>
+  path.resolve(__dirname, "fixtures", fixtureName);
 
 test("additionalComponentNames", function () {
   expect(
@@ -291,7 +292,7 @@ test("extractSourceLocation", function () {
             "col": 78,
             "line": 6,
           },
-          "file": "${getFixturePath("extractSourceLocation.js")}",
+          "file": "${getFixturePath('extractSourceLocation.js')}",
           "start": {
             "col": 11,
             "line": 6,
@@ -325,6 +326,26 @@ test("Properly throws parse errors", () => {
   ).toThrow("SyntaxError: MALFORMED_ARGUMENT");
 });
 
-test.skip("skipExtractionFormattedMessage", function () {
-  transformAndCheck("skipExtractionFormattedMessage");
+test("skipExtractionFormattedMessage", function () {
+  expect(transformAndCheck("skipExtractionFormattedMessage"))
+    .toMatchInlineSnapshot(`
+    {
+      "code": "import React, { Component } from 'react';
+    import { FormattedMessage } from 'react-intl';
+    function nonStaticId() {
+        return 'baz';
+    }
+    export default class Foo extends Component {
+        render() {
+            return /*#__PURE__*/ React.createElement(FormattedMessage, {
+                id: \`foo.bar.\${nonStaticId()}\`
+            });
+        }
+    }",
+      "data": {
+        "messages": [],
+        "meta": {},
+      },
+    }
+  `);
 });
