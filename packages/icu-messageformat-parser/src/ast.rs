@@ -76,6 +76,39 @@ pub enum ErrorKind {
     UnclosedTag = 27,
 }
 
+impl fmt::Display for ErrorKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ErrorKind::ExpectArgumentClosingBrace => write!(f, "EXPECT_ARGUMENT_CLOSING_BRACE"),
+            ErrorKind::EmptyArgument => write!(f, "EMPTY_ARGUMENT"),
+            ErrorKind::MalformedArgument => write!(f, "MALFORMED_ARGUMENT"),
+            ErrorKind::ExpectArgumentType => write!(f, "EXPECT_ARGUMENT_TYPE"),
+            ErrorKind::InvalidArgumentType => write!(f, "INVALID_ARGUMENT_TYPE"),
+            ErrorKind::ExpectArgumentStyle => write!(f, "EXPECT_ARGUMENT_STYLE"),
+            ErrorKind::InvalidNumberSkeleton => write!(f, "INVALID_NUMBER_SKELETON"),
+            ErrorKind::InvalidDateTimeSkeleton => write!(f, "INVALID_DATE_TIME_SKELETON"),
+            ErrorKind::ExpectNumberSkeleton => write!(f, "EXPECT_NUMBER_SKELETON"),
+            ErrorKind::ExpectDateTimeSkeleton => write!(f, "EXPECT_DATE_TIME_SKELETON"),
+            ErrorKind::UnclosedQuoteInArgumentStyle => write!(f, "UNCLOSED_QUOTE_IN_ARGUMENT_STYLE"),
+            ErrorKind::ExpectSelectArgumentOptions => write!(f, "EXPECT_SELECT_ARGUMENT_OPTIONS"),
+            ErrorKind::ExpectPluralArgumentOffsetValue => write!(f, "EXPECT_PLURAL_ARGUMENT_OFFSET_VALUE"),
+            ErrorKind::InvalidPluralArgumentOffsetValue => write!(f, "INVALID_PLURAL_ARGUMENT_OFFSET_VALUE"),
+            ErrorKind::ExpectSelectArgumentSelector => write!(f, "EXPECT_SELECT_ARGUMENT_SELECTOR"),
+            ErrorKind::ExpectPluralArgumentSelector => write!(f, "EXPECT_PLURAL_ARGUMENT_SELECTOR"),
+            ErrorKind::ExpectSelectArgumentSelectorFragment => write!(f, "EXPECT_SELECT_ARGUMENT_SELECTOR_FRAGMENT"),
+            ErrorKind::ExpectPluralArgumentSelectorFragment => write!(f, "EXPECT_PLURAL_ARGUMENT_SELECTOR_FRAGMENT"),
+            ErrorKind::InvalidPluralArgumentSelector => write!(f, "INVALID_PLURAL_ARGUMENT_SELECTOR"),
+            ErrorKind::DuplicatePluralArgumentSelector => write!(f, "DUPLICATE_PLURAL_ARGUMENT_SELECTOR"),
+            ErrorKind::DuplicateSelectArgumentSelector => write!(f, "DUPLICATE_SELECT_ARGUMENT_SELECTOR"),
+            ErrorKind::MissingOtherClause => write!(f, "MISSING_OTHER_CLAUSE"),
+            ErrorKind::InvalidTag => write!(f, "INVALID_TAG"),
+            ErrorKind::InvalidTagName => write!(f, "INVALID_TAG_NAME"),
+            ErrorKind::UnmatchedClosingTag => write!(f, "UNMATCHED_CLOSING_TAG"),
+            ErrorKind::UnclosedTag => write!(f, "UNCLOSED_TAG"),
+        }
+    }
+}
+
 /// A single position in an ICU message.
 ///
 /// A position encodes one half of a span, and include the code unit offset, line

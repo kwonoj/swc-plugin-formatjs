@@ -319,7 +319,7 @@ test("extractSourceLocation", function () {
   expect(meta).toMatchSnapshot();*/
 });
 
-test.skip("Properly throws parse errors", () => {
+test("Properly throws parse errors", () => {
   expect(() =>
     transform(path.join(__dirname, "fixtures", "icuSyntax.js"))
   ).toThrow("SyntaxError: MALFORMED_ARGUMENT");

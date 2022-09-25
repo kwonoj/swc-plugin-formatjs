@@ -270,26 +270,47 @@ fn get_jsx_icu_message_value(
             false
         };
 
-        // TODO: should use error emitter
+        #[cfg(feature = "plugin")]
+        let handler = &swc_core::plugin::errors::HANDLER;
+
+        #[cfg(feature = "custom_transform")]
+        let handler = &swc_core::common::errors::HANDLER;
+
         if is_literal_err {
-            panic!(
-                r#"
+            #[cfg(any(feature = "plugin", feature = "custom_transform"))]
+            {
+                handler.with(|handler| {
+                    handler
+                        .struct_err(
+                            r#"
                     [React Intl] Message failed to parse.
                     It looks like `\\`s were used for escaping,
                     this won't work with JSX string literals.
                     Wrap with `{{}}`.
                     See: http://facebook.github.io/react/docs/jsx-gotchas.html
-                    "#
-            );
+                    "#,
+                        )
+                        .emit()
+                });
+            }
         } else {
-            panic!(
-                r#"
+            #[cfg(any(feature = "plugin", feature = "custom_transform"))]
+            {
+                handler.with(|handler| {
+                    handler
+                        .struct_warn(
+                            r#"
                     [React Intl] Message failed to parse.
                     See: https://formatjs.io/docs/core-concepts/icu-syntax
                     \n {:#?}
                     "#,
-                e
-            );
+                        )
+                        .emit();
+                    handler
+                        .struct_err(&format!("SyntaxError: {}", e.kind.to_string()))
+                        .emit()
+                });
+            }
         }
     }
 
