@@ -55,8 +55,37 @@ test.skip("defineMessage", function () {
   transformAndCheck("defineMessage");
 });
 
-test.skip("descriptionsAsObjects", function () {
-  transformAndCheck("descriptionsAsObjects");
+test("descriptionsAsObjects", function () {
+  expect(transformAndCheck("descriptionsAsObjects")).toMatchInlineSnapshot(`
+    {
+      "code": "import React, { Component } from 'react';
+    import { FormattedMessage } from 'react-intl';
+    // @react-intl project:amazing2
+    export default class Foo extends Component {
+        render() {
+            return /*#__PURE__*/ React.createElement(FormattedMessage, {
+                id: "foo.bar.baz",
+                defaultMessage: "Hello World!"
+            });
+        }
+    }",
+      "data": {
+        "messages": [
+          {
+            "defaultMessage": "Hello World!",
+            "description": {
+              "metadata": "Additional metadata content.",
+              "text": "Something for the translator.",
+            },
+            "id": "foo.bar.baz",
+          },
+        ],
+        "meta": {
+          "project": "amazing2",
+        },
+      },
+    }
+  `);
 });
 
 test.skip("defineMessages", function () {
