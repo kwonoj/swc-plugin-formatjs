@@ -813,8 +813,6 @@ impl<C: Clone + Comments, S: SourceMapper> FormatJSVisitor<C, S> {
                     false
                 });
 
-                println!("{:#?}", id_prop);
-
                 if let Some(descriptor_id) = descriptor.id {
                     if let Some(id_prop) = id_prop {
                         let prop = id_prop.as_prop().unwrap();
@@ -842,8 +840,8 @@ impl<C: Clone + Comments, S: SourceMapper> FormatJSVisitor<C, S> {
                 let mut props = vec![];
                 for prop in obj.props.drain(..) {
                     match prop {
-                        PropOrSpread::Prop(prop) => {
-                            if let Prop::KeyValue(keyvalue) = &*prop {
+                        PropOrSpread::Prop(mut prop) => {
+                            if let Prop::KeyValue(keyvalue) = &mut *prop {
                                 let key = get_message_descriptor_key_from_call_expr(&keyvalue.key);
                                 if let Some(key) = key {
                                     match key {
@@ -856,16 +854,27 @@ impl<C: Clone + Comments, S: SourceMapper> FormatJSVisitor<C, S> {
                                             if self.options.remove_default_message {
                                                 // remove defaultMessage
                                             } else {
-                                                /*
-                                                const valueProp = defaultMessageProp.get('value')
-                                                if (ast) {
+                                                if self.options.ast {
+                                                    /*
                                                     valueProp.replaceWithSourceString(
                                                     JSON.stringify(parse(descriptor.defaultMessage))
                                                     )
+                                                     */
                                                 } else {
-                                                    valueProp.replaceWith(t.stringLiteral(descriptor.defaultMessage))
+                                                    if let Some(descriptor_default_message) =
+                                                        descriptor.default_message.as_ref()
+                                                    {
+                                                        keyvalue.value =
+                                                            Box::new(Expr::Lit(Lit::Str(Str {
+                                                                span: DUMMY_SP,
+                                                                value: descriptor_default_message
+                                                                    .as_str()
+                                                                    .into(),
+                                                                raw: None,
+                                                            })));
+                                                    }
                                                 }
-                                                 */
+
                                                 props.push(PropOrSpread::Prop(prop));
                                             }
                                         }
@@ -1008,15 +1017,16 @@ impl<C: Clone + Comments, S: SourceMapper> VisitMut for FormatJSVisitor<C, S> {
 
                     if &*ident.sym == "defineMessage" {
                         self.process_message_object(&mut message_obj);
-                    } else {
-                        /*
-                        const properties = messagesObj.get('properties')
-                        if (Array.isArray(properties)) {
-                        properties
-                            .map(prop => prop.get('value') as NodePath<t.ObjectExpression>)
-                            .forEach(processMessageObject)
+                    } else if let Some(obj) = message_obj {
+                        if let Expr::Object(obj) = obj {
+                            for prop in obj.props.iter_mut() {
+                                if let PropOrSpread::Prop(prop) = &mut *prop {
+                                    if let Prop::KeyValue(kv) = &mut **prop {
+                                        self.process_message_object(&mut Some(&mut *kv.value));
+                                    }
+                                }
+                            }
                         }
-                         */
                     }
                 }
             }
