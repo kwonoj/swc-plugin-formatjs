@@ -52,8 +52,98 @@ test.skip("ast", function () {
   });
 });
 
-test.skip("defineMessage", function () {
-  transformAndCheck("defineMessage");
+test("defineMessage", function () {
+  expect(transformAndCheck("defineMessage")).toMatchInlineSnapshot(`
+    {
+      "code": "// @react-intl project:amazing
+    function _extends() {
+        _extends = Object.assign || function(target) {
+            for(var i = 1; i < arguments.length; i++){
+                var source = arguments[i];
+                for(var key in source){
+                    if (Object.prototype.hasOwnProperty.call(source, key)) {
+                        target[key] = source[key];
+                    }
+                }
+            }
+            return target;
+        };
+        return _extends.apply(this, arguments);
+    }
+    import React, { Component } from 'react';
+    import { defineMessage, FormattedMessage } from 'react-intl';
+    const msgs = {
+        header: defineMessage({
+            id: 'foo.bar.baz',
+            defaultMessage: 'Hello World!'
+        }),
+        content: defineMessage({
+            id: 'foo.bar.biff',
+            defaultMessage: 'Hello Nurse!'
+        }),
+        kittens: defineMessage({
+            id: 'app.home.kittens',
+            defaultMessage: '{count, plural, =0 {😭} one {# kitten} other {# kittens}}'
+        }),
+        trailingWhitespace: defineMessage({
+            id: 'trailing.ws',
+            defaultMessage: '   Some whitespace   '
+        }),
+        escaped: defineMessage({
+            id: 'escaped.apostrophe',
+            defaultMessage: "A quoted value ''{value}'"
+        }),
+        stringKeys: defineMessage({
+            // prettier-ignore
+            'id': 'string.key.id',
+            // prettier-ignore
+            'defaultMessage': 'This is message'
+        })
+    };
+    export default class Foo extends Component {
+        render() {
+            return /*#__PURE__*/ React.createElement("div", null, /*#__PURE__*/ React.createElement("h1", null, /*#__PURE__*/ React.createElement(FormattedMessage, _extends({}, msgs.header))), /*#__PURE__*/ React.createElement("p", null, /*#__PURE__*/ React.createElement(FormattedMessage, _extends({}, msgs.content))), /*#__PURE__*/ React.createElement("p", null, /*#__PURE__*/ React.createElement(FormattedMessage, _extends({}, msgs.kittens))));
+        }
+    }",
+      "data": {
+        "messages": [
+          {
+            "defaultMessage": "Hello World!",
+            "description": "The default message",
+            "id": "foo.bar.baz",
+          },
+          {
+            "defaultMessage": "Hello Nurse!",
+            "description": "Another message",
+            "id": "foo.bar.biff",
+          },
+          {
+            "defaultMessage": "{count, plural, =0 {😭} one {# kitten} other {# kittens}}",
+            "description": "Counts kittens",
+            "id": "app.home.kittens",
+          },
+          {
+            "defaultMessage": "Some whitespace",
+            "description": "Whitespace",
+            "id": "trailing.ws",
+          },
+          {
+            "defaultMessage": "A quoted value ''{value}'",
+            "description": "Escaped apostrophe",
+            "id": "escaped.apostrophe",
+          },
+          {
+            "defaultMessage": "This is message",
+            "description": "Keys as a string literal",
+            "id": "string.key.id",
+          },
+        ],
+        "meta": {
+          "project": "amazing",
+        },
+      },
+    }
+  `);
 });
 
 test("descriptionsAsObjects", function () {
