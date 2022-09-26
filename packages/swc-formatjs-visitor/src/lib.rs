@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use icu_messageformat_parser::{Parser, ParserOptions};
 use once_cell::sync::Lazy;
@@ -14,7 +14,7 @@ use swc_core::{
         ast::{
             CallExpr, Callee, Expr, ExprOrSpread, Ident, JSXAttr, JSXAttrName, JSXAttrOrSpread,
             JSXAttrValue, JSXExpr, JSXNamespacedName, JSXOpeningElement, KeyValueProp, Lit,
-            ModuleItem, ObjectLit, Prop, PropName, PropOrSpread, Str,
+            MemberProp, ModuleItem, ObjectLit, Prop, PropName, PropOrSpread, Str,
         },
         visit::{noop_visit_mut_type, VisitMut, VisitMutWith},
     },
@@ -32,6 +32,8 @@ pub struct FormatJSPluginOptions {
     pub extract_source_location: bool,
     pub preserve_whitespace: bool,
     pub __debug_extracted_messages_comment: bool,
+    pub additional_function_names: Vec<String>,
+    pub additional_component_names: Vec<String>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -732,9 +734,46 @@ pub struct FormatJSVisitor<C: Clone + Comments, S: SourceMapper> {
     filename: String,
     messages: Vec<ExtractedMessage>,
     meta: HashMap<String, String>,
+    component_names: HashSet<String>,
+    function_names: HashSet<String>,
 }
 
 impl<C: Clone + Comments, S: SourceMapper> FormatJSVisitor<C, S> {
+    fn new(
+        source_map: std::sync::Arc<S>,
+        comments: C,
+        plugin_options: FormatJSPluginOptions,
+        filename: &str,
+    ) -> Self {
+        let mut function_names: HashSet<String> = Default::default();
+        plugin_options
+            .additional_function_names
+            .iter()
+            .for_each(|name| {
+                function_names.insert(name.to_string());
+            });
+        function_names.insert("formatMessage".to_string());
+        function_names.insert("$formatMessage".to_string());
+
+        let mut component_names: HashSet<String> = Default::default();
+        plugin_options
+            .additional_component_names
+            .iter()
+            .for_each(|name| {
+                component_names.insert(name.to_string());
+            });
+
+        FormatJSVisitor {
+            source_map,
+            comments,
+            options: plugin_options,
+            filename: filename.to_string(),
+            messages: Default::default(),
+            meta: Default::default(),
+            component_names,
+            function_names,
+        }
+    }
     fn read_pragma(&mut self, span_lo: BytePos, span_hi: BytePos) {
         let mut comments = self.comments.get_leading(span_lo).unwrap_or_default();
         comments.append(&mut self.comments.get_leading(span_hi).unwrap_or_default());
@@ -1033,13 +1072,28 @@ impl<C: Clone + Comments, S: SourceMapper> VisitMut for FormatJSVisitor<C, S> {
         }
 
         // Check that this is `intl.formatMessage` call
-        /*
-        if (isFormatMessageCall(callee, functionNames)) {
-            const messageDescriptor = args[0]
-            if (messageDescriptor.isObjectExpression()) {
-            processMessageObject(messageDescriptor)
+        if let Callee::Expr(expr) = &callee {
+            let is_format_message_call = match &**expr {
+                Expr::Ident(ident) if self.function_names.contains(&*ident.sym) => true,
+                Expr::Member(member_expr) => {
+                    if let MemberProp::Ident(ident) = &member_expr.prop {
+                        self.function_names.contains(&*ident.sym)
+                    } else {
+                        false
+                    }
+                }
+                _ => false,
+            };
+
+            if is_format_message_call {
+                let message_descriptor = args.get_mut(0);
+                if let Some(message_descriptor) = message_descriptor {
+                    if message_descriptor.expr.is_object() {
+                        self.process_message_object(&mut Some(message_descriptor.expr.as_mut()));
+                    }
+                }
             }
-        } */
+        }
     }
 
     fn visit_mut_module_items(&mut self, items: &mut Vec<ModuleItem>) {
@@ -1085,12 +1139,5 @@ pub fn create_formatjs_visitor<C: Clone + Comments, S: SourceMapper>(
     plugin_options: FormatJSPluginOptions,
     filename: &str,
 ) -> FormatJSVisitor<C, S> {
-    FormatJSVisitor {
-        source_map,
-        comments,
-        options: plugin_options,
-        filename: filename.to_string(),
-        messages: Default::default(),
-        meta: Default::default(),
-    }
+    FormatJSVisitor::new(source_map, comments, plugin_options, filename)
 }
