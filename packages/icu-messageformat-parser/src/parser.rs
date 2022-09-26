@@ -1526,7 +1526,7 @@ impl<'s> Parser<'s> {
 
         #[cfg(feature = "utf16")]
         {
-            offset += 1;
+            offset += ch.len_utf16();
         }
         #[cfg(not(feature = "utf16"))]
         {
