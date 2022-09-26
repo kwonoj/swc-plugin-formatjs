@@ -12,9 +12,9 @@ use swc_core::{
     },
     ecma::{
         ast::{
-            Expr, Ident, JSXAttr, JSXAttrName, JSXAttrOrSpread, JSXAttrValue, JSXExpr,
-            JSXNamespacedName, JSXOpeningElement, Lit, ModuleItem, ObjectLit, Prop, PropName,
-            PropOrSpread, Str,
+            CallExpr, Callee, Expr, ExprOrSpread, Ident, JSXAttr, JSXAttrName, JSXAttrOrSpread,
+            JSXAttrValue, JSXExpr, JSXNamespacedName, JSXOpeningElement, KeyValueProp, Lit,
+            ModuleItem, ObjectLit, Prop, PropName, PropOrSpread, Str,
         },
         visit::{noop_visit_mut_type, VisitMut, VisitMutWith},
     },
@@ -34,13 +34,18 @@ pub struct FormatJSPluginOptions {
     pub __debug_extracted_messages_comment: bool,
 }
 
-type Unknown = String;
-
 #[derive(Debug, Clone, Default)]
 pub struct JSXMessageDescriptorPath {
     id: Option<JSXAttrValue>,
     default_message: Option<JSXAttrValue>,
     description: Option<JSXAttrValue>,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct CallExprMessageDescriptorPath {
+    id: Option<Expr>,
+    default_message: Option<Expr>,
+    description: Option<Expr>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -50,15 +55,27 @@ pub struct MessageDescriptor {
     description: Option<MessageDescriptionValue>,
 }
 
+// TODO: consolidate with get_message_descriptor_key_from_call_expr?
 fn get_message_descriptor_key_from_jsx(name: &JSXAttrName) -> &str {
     match name {
         JSXAttrName::Ident(name)
         | JSXAttrName::JSXNamespacedName(JSXNamespacedName { name, .. }) => &*name.sym,
     }
 
-    // Do not support evaluatePath()
+    // NOTE: Do not support evaluatePath()
 }
 
+fn get_message_descriptor_key_from_call_expr(name: &PropName) -> Option<&str> {
+    match name {
+        PropName::Ident(name) => Some(&*name.sym),
+        PropName::Str(name) => Some(&*name.value),
+        _ => None,
+    }
+
+    // NOTE: Do not support evaluatePath()
+}
+
+// TODO: Consolidate with create_message_descriptor_from_call_expr
 fn create_message_descriptor_from_jsx_attr(
     attrs: &Vec<JSXAttrOrSpread>,
 ) -> JSXMessageDescriptorPath {
@@ -80,6 +97,36 @@ fn create_message_descriptor_from_jsx_attr(
                 _ => {
                     //unexpected
                 }
+            }
+        }
+    }
+
+    ret
+}
+
+fn create_message_descriptor_from_call_expr(
+    props: &Vec<PropOrSpread>,
+) -> CallExprMessageDescriptorPath {
+    let mut ret = CallExprMessageDescriptorPath::default();
+    for prop in props {
+        if let PropOrSpread::Prop(prop) = prop {
+            if let Prop::KeyValue(KeyValueProp { key, value }) = &**prop {
+                if let Some(key) = get_message_descriptor_key_from_call_expr(key) {
+                    match key {
+                        "id" => {
+                            ret.id = Some(*value.clone());
+                        }
+                        "defaultMessage" => {
+                            ret.default_message = Some(*value.clone());
+                        }
+                        "description" => {
+                            ret.description = Some(*value.clone());
+                        }
+                        _ => {
+                            //unexpected
+                        }
+                    }
+                };
             }
         }
     }
@@ -120,6 +167,27 @@ fn get_jsx_message_descriptor_value(
             };
         }
         JSXAttrValue::Lit(lit) => match &lit {
+            Lit::Str(str) => Some(str.value.to_string()),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+fn get_call_expr_message_descriptor_value(
+    value: &Option<Expr>,
+    _is_message_node: Option<bool>,
+) -> Option<String> {
+    if value.is_none() {
+        return None;
+    }
+
+    let value = value.as_ref().expect("Should be available");
+
+    // NOTE: do not support evaluatePath
+    match value {
+        Expr::Ident(ident) => Some(ident.sym.to_string()),
+        Expr::Lit(lit) => match &lit {
             Lit::Str(str) => Some(str.value.to_string()),
             _ => None,
         },
@@ -192,6 +260,7 @@ impl Serialize for MessageDescriptionValue {
 // NOTE: due to not able to support static evaluation, this
 // fn manually expands possible values for the description values
 // from string to object.
+//TODO: Consolidate with get_call_expr_message_descriptor_value_maybe_object
 fn get_jsx_message_descriptor_value_maybe_object(
     value: &Option<JSXAttrValue>,
     is_message_node: Option<bool>,
@@ -235,6 +304,28 @@ fn get_jsx_message_descriptor_value_maybe_object(
     }
 }
 
+fn get_call_expr_message_descriptor_value_maybe_object(
+    value: &Option<Expr>,
+    _is_message_node: Option<bool>,
+) -> Option<MessageDescriptionValue> {
+    if value.is_none() {
+        return None;
+    }
+
+    let value = value.as_ref().expect("Should be available");
+    // NOTE: do not support evaluatePath
+    match value {
+        Expr::Ident(ident) => Some(MessageDescriptionValue::Str(ident.sym.to_string())),
+        Expr::Lit(lit) => match &lit {
+            Lit::Str(str) => Some(MessageDescriptionValue::Str(str.value.to_string())),
+            _ => None,
+        },
+        Expr::Object(object_lit) => Some(MessageDescriptionValue::Obj(object_lit.clone())),
+        _ => None,
+    }
+}
+
+// TODO: Consolidate with get_call_expr_icu_message_value
 fn get_jsx_icu_message_value(
     message_path: &Option<JSXAttrValue>,
     preserve_whitespace: bool,
@@ -246,7 +337,7 @@ fn get_jsx_icu_message_value(
     let message =
         get_jsx_message_descriptor_value(message_path, Some(true)).unwrap_or("".to_string());
 
-    let message = if preserve_whitespace {
+    let message = if !preserve_whitespace {
         let message = WHITESPACE_REGEX.replace_all(&message, " ");
         message.trim().to_string()
     } else {
@@ -311,6 +402,55 @@ fn get_jsx_icu_message_value(
                         .emit()
                 });
             }
+        }
+    }
+
+    return message;
+}
+
+fn get_call_expr_icu_message_value(
+    message_path: &Option<Expr>,
+    preserve_whitespace: bool,
+) -> String {
+    if message_path.is_none() {
+        return "".to_string();
+    }
+
+    let message =
+        get_call_expr_message_descriptor_value(message_path, Some(true)).unwrap_or("".to_string());
+
+    let message = if !preserve_whitespace {
+        let message = WHITESPACE_REGEX.replace_all(&message, " ");
+        message.trim().to_string()
+    } else {
+        message
+    };
+
+    let mut parser = Parser::new(message.as_str(), &ParserOptions::default());
+
+    if let Err(e) = parser.parse() {
+        #[cfg(feature = "plugin")]
+        let handler = &swc_core::plugin::errors::HANDLER;
+
+        #[cfg(feature = "custom_transform")]
+        let handler = &swc_core::common::errors::HANDLER;
+
+        #[cfg(any(feature = "plugin", feature = "custom_transform"))]
+        {
+            handler.with(|handler| {
+                handler
+                    .struct_warn(
+                        r#"
+                    [React Intl] Message failed to parse.
+                    See: https://formatjs.io/docs/core-concepts/icu-syntax
+                    \n {:#?}
+                    "#,
+                    )
+                    .emit();
+                handler
+                    .struct_err(&format!("SyntaxError: {}", e.kind.to_string()))
+                    .emit()
+            });
         }
     }
 
@@ -385,6 +525,7 @@ fn interpolate_name(resource_path: &str, name: &str, content: &str) -> Option<St
     Some(url.to_string())
 }
 
+// TODO: Consolidate with evaluate_call_expr_message_descriptor
 fn evaluate_jsx_message_descriptor(
     descriptor_path: &JSXMessageDescriptorPath,
     options: &FormatJSPluginOptions,
@@ -400,6 +541,46 @@ fn evaluate_jsx_message_descriptor(
         get_jsx_message_descriptor_value_maybe_object(&descriptor_path.description, None);
 
     // Note: do not support override fn
+    let id = if id.is_some() && options.id_interpolate_pattern.is_some() && default_message != "" {
+        let content = if let Some(description) = &description {
+            if let MessageDescriptionValue::Str(description) = description {
+                format!("{}{}", default_message, description)
+            } else {
+                default_message.clone()
+            }
+        } else {
+            default_message.clone()
+        };
+        interpolate_name(
+            filename,
+            &options.id_interpolate_pattern.as_ref().unwrap(),
+            &content,
+        )
+    } else {
+        id
+    };
+
+    MessageDescriptor {
+        id,
+        default_message: Some(default_message),
+        description,
+    }
+}
+
+fn evaluate_call_expr_message_descriptor(
+    descriptor_path: &CallExprMessageDescriptorPath,
+    options: &FormatJSPluginOptions,
+    filename: &str,
+) -> MessageDescriptor {
+    let id = get_call_expr_message_descriptor_value(&descriptor_path.id, None);
+    let default_message = get_call_expr_icu_message_value(
+        &descriptor_path.default_message,
+        options.preserve_whitespace,
+    );
+
+    let description =
+        get_call_expr_message_descriptor_value_maybe_object(&descriptor_path.description, None);
+
     let id = if id.is_some() && options.id_interpolate_pattern.is_some() && default_message != "" {
         let content = if let Some(description) = &description {
             if let MessageDescriptionValue::Str(description) = description {
@@ -468,6 +649,54 @@ fn store_message(
     });
 }
 
+fn get_message_object_from_expression(expr: Option<&mut ExprOrSpread>) -> Option<&mut Expr> {
+    if let Some(expr) = expr {
+        let expr = &mut *expr.expr;
+        Some(expr)
+    } else {
+        None
+    }
+}
+
+fn assert_object_expression(expr: &Option<&mut Expr>, callee: &Callee) {
+    let assert_fail = match expr {
+        Some(expr) => !expr.is_object(),
+        _ => true,
+    };
+
+    if assert_fail {
+        let prop = if let Callee::Expr(expr) = callee {
+            if let Expr::Ident(ident) = &**expr {
+                Some(ident.sym.to_string())
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        #[cfg(feature = "plugin")]
+        let handler = &swc_core::plugin::errors::HANDLER;
+
+        #[cfg(feature = "custom_transform")]
+        let handler = &swc_core::common::errors::HANDLER;
+
+        #[cfg(any(feature = "plugin", feature = "custom_transform"))]
+        handler.with(|handler| {
+            handler
+                .struct_err(
+                    &(format!(
+                        r#"[React Intl] `{}` must be called with an object expression
+                        with values that are React Intl Message Descriptors,
+                        also defined as object expressions."#,
+                        prop.unwrap_or_default()
+                    )),
+                )
+                .emit()
+        });
+    }
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ExtractedMessage {
@@ -529,6 +758,134 @@ impl<C: Clone + Comments, S: SourceMapper> FormatJSVisitor<C, S> {
             }
         }
     }
+
+    fn process_message_object(&mut self, message_descriptor: &mut Option<&mut Expr>) {
+        if let Some(message_obj) = &mut *message_descriptor {
+            let (lo, hi) = (message_obj.span().lo, message_obj.span().hi);
+
+            if let Expr::Object(obj) = *message_obj {
+                let properties = &obj.props;
+
+                let descriptor_path = create_message_descriptor_from_call_expr(properties);
+
+                // If the message is already compiled, don't re-compile it
+                if let Some(default_message) = &descriptor_path.default_message {
+                    if default_message.is_array() {
+                        return;
+                    }
+                }
+
+                let descriptor = evaluate_call_expr_message_descriptor(
+                    &descriptor_path,
+                    &self.options,
+                    &self.filename,
+                );
+
+                let source_location = if self.options.extract_source_location {
+                    Some((
+                        self.source_map.lookup_char_pos(lo),
+                        self.source_map.lookup_char_pos(hi),
+                    ))
+                } else {
+                    None
+                };
+
+                store_message(
+                    &mut self.messages,
+                    &descriptor,
+                    &self.filename,
+                    source_location,
+                );
+
+                let first_prop = properties.first().is_some();
+
+                // Insert ID potentially 1st before removing nodes
+                let id_prop = obj.props.iter().find(|prop| {
+                    if let PropOrSpread::Prop(prop) = prop {
+                        if let Prop::KeyValue(kv) = &**prop {
+                            return match &kv.key {
+                                PropName::Ident(ident) => &*ident.sym == "id",
+                                PropName::Str(str_) => &*str_.value == "id",
+                                _ => false,
+                            };
+                        }
+                    }
+                    false
+                });
+
+                println!("{:#?}", id_prop);
+
+                if let Some(descriptor_id) = descriptor.id {
+                    if let Some(id_prop) = id_prop {
+                        let prop = id_prop.as_prop().unwrap();
+                        let kv = &mut prop.as_key_value().unwrap();
+                        kv.to_owned().value = Box::new(Expr::Lit(Lit::Str(Str {
+                            span: DUMMY_SP,
+                            value: descriptor_id.into(),
+                            raw: None,
+                        })));
+                    } else {
+                        obj.props.insert(
+                            0,
+                            PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
+                                key: PropName::Ident(Ident::new("id".into(), DUMMY_SP)),
+                                value: Box::new(Expr::Lit(Lit::Str(Str {
+                                    span: DUMMY_SP,
+                                    value: descriptor_id.into(),
+                                    raw: None,
+                                }))),
+                            }))),
+                        )
+                    }
+                }
+
+                let mut props = vec![];
+                for prop in obj.props.drain(..) {
+                    match prop {
+                        PropOrSpread::Prop(prop) => {
+                            if let Prop::KeyValue(keyvalue) = &*prop {
+                                let key = get_message_descriptor_key_from_call_expr(&keyvalue.key);
+                                if let Some(key) = key {
+                                    match key {
+                                        "description" => {
+                                            // remove description
+                                            self.comments.take_leading(prop.span().lo);
+                                        }
+                                        // Pre-parse or remove defaultMessage
+                                        "defaultMessage" => {
+                                            if self.options.remove_default_message {
+                                                // remove defaultMessage
+                                            } else {
+                                                /*
+                                                const valueProp = defaultMessageProp.get('value')
+                                                if (ast) {
+                                                    valueProp.replaceWithSourceString(
+                                                    JSON.stringify(parse(descriptor.defaultMessage))
+                                                    )
+                                                } else {
+                                                    valueProp.replaceWith(t.stringLiteral(descriptor.defaultMessage))
+                                                }
+                                                 */
+                                                props.push(PropOrSpread::Prop(prop));
+                                            }
+                                        }
+                                        _ => props.push(PropOrSpread::Prop(prop)),
+                                    }
+                                } else {
+                                    props.push(PropOrSpread::Prop(prop));
+                                }
+                            } else {
+                                props.push(PropOrSpread::Prop(prop));
+                            }
+                        }
+                        _ => props.push(prop),
+                    }
+                }
+
+                obj.props = props;
+            }
+        }
+    }
 }
 
 impl<C: Clone + Comments, S: SourceMapper> VisitMut for FormatJSVisitor<C, S> {
@@ -556,8 +913,8 @@ impl<C: Clone + Comments, S: SourceMapper> VisitMut for FormatJSVisitor<C, S> {
 
         let source_location = if self.options.extract_source_location {
             Some((
-                self.source_map.lookup_char_pos(jsx_opening_elem.span.lo),
-                self.source_map.lookup_char_pos(jsx_opening_elem.span.hi),
+                self.source_map.lookup_char_pos(jsx_opening_elem.span().lo),
+                self.source_map.lookup_char_pos(jsx_opening_elem.span().hi),
             ))
         } else {
             None
@@ -581,6 +938,7 @@ impl<C: Clone + Comments, S: SourceMapper> VisitMut for FormatJSVisitor<C, S> {
                     match key {
                         "description" => {
                             // remove description
+                            self.comments.take_leading(attr.span().lo);
                         }
                         "defaultMessage" => {
                             if self.options.remove_default_message {
@@ -634,6 +992,44 @@ impl<C: Clone + Comments, S: SourceMapper> VisitMut for FormatJSVisitor<C, S> {
         }
 
         // tag_as_extracted();
+    }
+
+    fn visit_mut_call_expr(&mut self, call_expr: &mut CallExpr) {
+        let callee = &call_expr.callee;
+        let args = &mut call_expr.args;
+
+        if let Callee::Expr(callee_expr) = callee {
+            if let Expr::Ident(ident) = &**callee_expr {
+                if &*ident.sym == "defineMessage" || &*ident.sym == "defineMessages" {
+                    let first_arg = args.get_mut(0);
+                    let mut message_obj = get_message_object_from_expression(first_arg);
+
+                    assert_object_expression(&message_obj, callee);
+
+                    if &*ident.sym == "defineMessage" {
+                        self.process_message_object(&mut message_obj);
+                    } else {
+                        /*
+                        const properties = messagesObj.get('properties')
+                        if (Array.isArray(properties)) {
+                        properties
+                            .map(prop => prop.get('value') as NodePath<t.ObjectExpression>)
+                            .forEach(processMessageObject)
+                        }
+                         */
+                    }
+                }
+            }
+        }
+
+        // Check that this is `intl.formatMessage` call
+        /*
+        if (isFormatMessageCall(callee, functionNames)) {
+            const messageDescriptor = args[0]
+            if (messageDescriptor.isObjectExpression()) {
+            processMessageObject(messageDescriptor)
+            }
+        } */
     }
 
     fn visit_mut_module_items(&mut self, items: &mut Vec<ModuleItem>) {
