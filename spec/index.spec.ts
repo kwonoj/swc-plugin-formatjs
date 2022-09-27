@@ -534,8 +534,48 @@ test("FormattedMessage", function () {
     }
   `);
 });
-test.skip("inline", function () {
-  transformAndCheck("inline");
+
+test("inline", function () {
+  expect(transformAndCheck("inline")).toMatchInlineSnapshot(`
+    {
+      "code": "import React, { Component } from 'react';
+    import { FormattedMessage, defineMessage } from 'react-intl';
+    export default class Foo extends Component {
+        render() {
+            return /*#__PURE__*/ React.createElement("div", null, /*#__PURE__*/ React.createElement(FormattedMessage, {
+                id: "foo.bar.baz",
+                defaultMessage: "Hello World!"
+            }), defineMessage({
+                id: 'header',
+                defaultMessage: "Hello World!"
+            }), defineMessage({
+                id: 'header2',
+                defaultMessage: "Hello World!"
+            }));
+        }
+    }",
+      "data": {
+        "messages": [
+          {
+            "defaultMessage": "Hello World!",
+            "description": "The default message.",
+            "id": "foo.bar.baz",
+          },
+          {
+            "defaultMessage": "Hello World!",
+            "description": "The default message",
+            "id": "header",
+          },
+          {
+            "defaultMessage": "Hello World!",
+            "description": "The default message",
+            "id": "header2",
+          },
+        ],
+        "meta": {},
+      },
+    }
+  `);
 });
 
 test("templateLiteral", function () {
@@ -583,38 +623,352 @@ test.skip("idInterpolationPattern default", function () {
   transformAndCheck("idInterpolationPattern");
 });
 
-test.skip("GH #2663", function () {
-  const filePath = path.join(__dirname, "fixtures", `2663.js`);
-  const messages: ExtractedMessageDescriptor[] = [];
-  const meta = {};
-
-  /*
-  const { code } = transformFileSync(filePath, {
-    presets: ['@babel/preset-env', '@babel/preset-react'],
-    plugins: [
-      [
-        plugin,
-        {
-          pragma: '@react-intl',
-          onMsgExtracted(_, msgs) {
-            messages.push(...msgs)
+test("GH #2663_custom_transform", function () {
+  if (!process.env.SWC_TRANSFORM_CUSTOM) {
+    return;
+  }
+  expect(
+    transformAndCheck("2663", undefined, {
+      jsc: {
+        target: "es5",
+      },
+    })
+  ).toMatchInlineSnapshot(`
+    {
+      "code": "function asyncGeneratorStep(gen, resolve, reject, _next, _throw, key, arg) {
+        try {
+            var info = gen[key](arg);
+            var value = info.value;
+        } catch (error) {
+            reject(error);
+            return;
+        }
+        if (info.done) {
+            resolve(value);
+        } else {
+            Promise.resolve(value).then(_next, _throw);
+        }
+    }
+    function _asyncToGenerator(fn) {
+        return function() {
+            var self = this, args = arguments;
+            return new Promise(function(resolve, reject) {
+                var gen = fn.apply(self, args);
+                function _next(value) {
+                    asyncGeneratorStep(gen, resolve, reject, _next, _throw, "next", value);
+                }
+                function _throw(err) {
+                    asyncGeneratorStep(gen, resolve, reject, _next, _throw, "throw", err);
+                }
+                _next(undefined);
+            });
+        };
+    }
+    var __generator = this && this.__generator || function(thisArg, body) {
+        var f, y, t, g, _ = {
+            label: 0,
+            sent: function() {
+                if (t[0] & 1) throw t[1];
+                return t[1];
+            },
+            trys: [],
+            ops: []
+        };
+        return g = {
+            next: verb(0),
+            "throw": verb(1),
+            "return": verb(2)
+        }, typeof Symbol === "function" && (g[Symbol.iterator] = function() {
+            return this;
+        }), g;
+        function verb(n) {
+            return function(v) {
+                return step([
+                    n,
+                    v
+                ]);
+            };
+        }
+        function step(op) {
+            if (f) throw new TypeError("Generator is already executing.");
+            while(_)try {
+                if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
+                if (y = 0, t) op = [
+                    op[0] & 2,
+                    t.value
+                ];
+                switch(op[0]){
+                    case 0:
+                    case 1:
+                        t = op;
+                        break;
+                    case 4:
+                        _.label++;
+                        return {
+                            value: op[1],
+                            done: false
+                        };
+                    case 5:
+                        _.label++;
+                        y = op[1];
+                        op = [
+                            0
+                        ];
+                        continue;
+                    case 7:
+                        op = _.ops.pop();
+                        _.trys.pop();
+                        continue;
+                    default:
+                        if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) {
+                            _ = 0;
+                            continue;
+                        }
+                        if (op[0] === 3 && (!t || op[1] > t[0] && op[1] < t[3])) {
+                            _.label = op[1];
+                            break;
+                        }
+                        if (op[0] === 6 && _.label < t[1]) {
+                            _.label = t[1];
+                            t = op;
+                            break;
+                        }
+                        if (t && _.label < t[2]) {
+                            _.label = t[2];
+                            _.ops.push(op);
+                            break;
+                        }
+                        if (t[2]) _.ops.pop();
+                        _.trys.pop();
+                        continue;
+                }
+                op = body.call(thisArg, _);
+            } catch (e) {
+                op = [
+                    6,
+                    e
+                ];
+                y = 0;
+            } finally{
+                f = t = 0;
+            }
+            if (op[0] & 5) throw op[1];
+            return {
+                value: op[0] ? op[1] : void 0,
+                done: true
+            };
+        }
+    };
+    function error1() {
+        return _error1.apply(this, arguments);
+    }
+    function _error1() {
+        _error1 = _asyncToGenerator(function() {
+            return __generator(this, function(_state) {
+                switch(_state.label){
+                    case 0:
+                        return [
+                            4,
+                            intl.formatMessage({
+                                id: "dI+HS6",
+                                defaultMessage: "foo"
+                            })
+                        ];
+                    case 1:
+                        _state.sent();
+                        return [
+                            2
+                        ];
+                }
+            });
+        }",
+      "data": {
+        "messages": [
+          {
+            "defaultMessage": "foo",
+            "description": "foo",
+            "id": "dI+HS6",
           },
-          onMetaExtracted(_, m) {
-            Object.assign(meta, m)
-          },
-        } as Options,
-        Date.now() + '' + ++cacheBust,
-      ],
-    ],
-  })!*/
-
-  const code = "tbd";
-  expect({
-    data: { messages, meta },
-    code: code?.trim(),
-  }).toMatchSnapshot();
+        ],
+        "meta": {},
+      },
+    }
+  `);
 });
 
+test("GH #2663_plugin", function () {
+  if (process.env.SWC_TRANSFORM_CUSTOM) {
+    return;
+  }
+  expect(
+    transformAndCheck("2663", undefined, {
+      jsc: {
+        target: "es5",
+      },
+    })
+  ).toMatchInlineSnapshot(`
+    {
+      "code": "function asyncGeneratorStep(gen, resolve, reject, _next, _throw, key, arg) {
+        try {
+            var info = gen[key](arg);
+            var value = info.value;
+        } catch (error) {
+            reject(error);
+            return;
+        }
+        if (info.done) {
+            resolve(value);
+        } else {
+            Promise.resolve(value).then(_next, _throw);
+        }
+    }
+    function _asyncToGenerator(fn) {
+        return function() {
+            var self = this, args = arguments;
+            return new Promise(function(resolve, reject) {
+                var gen = fn.apply(self, args);
+                function _next(value) {
+                    asyncGeneratorStep(gen, resolve, reject, _next, _throw, "next", value);
+                }
+                function _throw(err) {
+                    asyncGeneratorStep(gen, resolve, reject, _next, _throw, "throw", err);
+                }
+                _next(undefined);
+            });
+        };
+    }
+    var __generator = this && this.__generator || function(thisArg, body) {
+        var f, y, t, g, _ = {
+            label: 0,
+            sent: function() {
+                if (t[0] & 1) throw t[1];
+                return t[1];
+            },
+            trys: [],
+            ops: []
+        };
+        return g = {
+            next: verb(0),
+            "throw": verb(1),
+            "return": verb(2)
+        }, typeof Symbol === "function" && (g[Symbol.iterator] = function() {
+            return this;
+        }), g;
+        function verb(n) {
+            return function(v) {
+                return step([
+                    n,
+                    v
+                ]);
+            };
+        }
+        function step(op) {
+            if (f) throw new TypeError("Generator is already executing.");
+            while(_)try {
+                if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
+                if (y = 0, t) op = [
+                    op[0] & 2,
+                    t.value
+                ];
+                switch(op[0]){
+                    case 0:
+                    case 1:
+                        t = op;
+                        break;
+                    case 4:
+                        _.label++;
+                        return {
+                            value: op[1],
+                            done: false
+                        };
+                    case 5:
+                        _.label++;
+                        y = op[1];
+                        op = [
+                            0
+                        ];
+                        continue;
+                    case 7:
+                        op = _.ops.pop();
+                        _.trys.pop();
+                        continue;
+                    default:
+                        if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) {
+                            _ = 0;
+                            continue;
+                        }
+                        if (op[0] === 3 && (!t || op[1] > t[0] && op[1] < t[3])) {
+                            _.label = op[1];
+                            break;
+                        }
+                        if (op[0] === 6 && _.label < t[1]) {
+                            _.label = t[1];
+                            t = op;
+                            break;
+                        }
+                        if (t && _.label < t[2]) {
+                            _.label = t[2];
+                            _.ops.push(op);
+                            break;
+                        }
+                        if (t[2]) _.ops.pop();
+                        _.trys.pop();
+                        continue;
+                }
+                op = body.call(thisArg, _);
+            } catch (e) {
+                op = [
+                    6,
+                    e
+                ];
+                y = 0;
+            } finally{
+                f = t = 0;
+            }
+            if (op[0] & 5) throw op[1];
+            return {
+                value: op[0] ? op[1] : void 0,
+                done: true
+            };
+        }
+    };
+    function error1() {
+        return _error1.apply(this, arguments);
+    }
+    function _error1() {
+        _error1 = _asyncToGenerator(function() {
+            var _tmp;
+            return __generator(this, function(_state) {
+                switch(_state.label){
+                    case 0:
+                        _tmp = {};
+                        return [
+                            4,
+                            intl.formatMessage((_tmp.id = "dI+HS6", _tmp.defaultMessage = "foo", _tmp))
+                        ];
+                    case 1:
+                        _state.sent();
+                        return [
+                            2
+                        ];
+                }
+            });
+        }",
+      "data": {
+        "messages": [
+          {
+            "defaultMessage": "foo",
+            "description": "foo",
+            "id": "dI+HS6",
+          },
+        ],
+        "meta": {},
+      },
+    }
+  `);
+});
+
+// UNSUPPORTED
 test.skip("overrideIdFn", function () {
   transformAndCheck("overrideIdFn", {
     overrideIdFn: (
@@ -717,10 +1071,134 @@ test.skip("removeDefaultMessage + overrideIdFn", function () {
   });
 });
 
-test.skip("preserveWhitespace", function () {
-  transformAndCheck("preserveWhitespace", {
-    preserveWhitespace: true,
-  });
+test("preserveWhitespace", function () {
+  expect(
+    transformAndCheck("preserveWhitespace", {
+      preserveWhitespace: true,
+    })
+  ).toMatchInlineSnapshot(`
+    {
+      "code": "// @react-intl project:amazing
+    function _extends() {
+        _extends = Object.assign || function(target) {
+            for(var i = 1; i < arguments.length; i++){
+                var source = arguments[i];
+                for(var key in source){
+                    if (Object.prototype.hasOwnProperty.call(source, key)) {
+                        target[key] = source[key];
+                    }
+                }
+            }
+            return target;
+        };
+        return _extends.apply(this, arguments);
+    }
+    import React, { Component } from 'react';
+    import { defineMessages, FormattedMessage } from 'react-intl';
+    const msgs = defineMessages({
+        header: {
+            id: 'foo.bar.baz',
+            defaultMessage: "Hello World!"
+        },
+        content: {
+            id: 'foo.bar.biff',
+            defaultMessage: "Hello Nurse!"
+        },
+        kittens: {
+            id: 'app.home.kittens',
+            defaultMessage: "{count, plural, =0 {😭} one {# kitten} other {# kittens}}"
+        },
+        trailingWhitespace: {
+            id: 'trailing.ws',
+            defaultMessage: "   Some whitespace   "
+        },
+        escaped: {
+            id: 'escaped.apostrophe',
+            defaultMessage: "A quoted value ''{value}'"
+        },
+        newline: {
+            id: 'newline',
+            defaultMessage: "this is     a message"
+        },
+        linebreak: {
+            id: 'linebreak',
+            defaultMessage: "this is\\na message"
+        },
+        templateLinebreak: {
+            id: 'templateLinebreak',
+            description: \`this is
+        a
+        description\`,
+            defaultMessage: "this is\\n    a message"
+        }
+    });
+    export default class Foo extends Component {
+        render() {
+            return /*#__PURE__*/ React.createElement("div", null, /*#__PURE__*/ React.createElement("h1", null, /*#__PURE__*/ React.createElement(FormattedMessage, _extends({}, msgs.header))), /*#__PURE__*/ React.createElement("p", null, /*#__PURE__*/ React.createElement(FormattedMessage, _extends({}, msgs.content))), /*#__PURE__*/ React.createElement("p", null, /*#__PURE__*/ React.createElement(FormattedMessage, _extends({}, msgs.kittens))), /*#__PURE__*/ React.createElement("p", null, /*#__PURE__*/ React.createElement(FormattedMessage, {
+                id: "inline.linebreak",
+                defaultMessage: "formatted message with linebreak"
+            })));
+        }
+    }",
+      "data": {
+        "messages": [
+          {
+            "defaultMessage": "Hello World!",
+            "description": "The default message",
+            "id": "foo.bar.baz",
+          },
+          {
+            "defaultMessage": "Hello Nurse!",
+            "description": "Another message",
+            "id": "foo.bar.biff",
+          },
+          {
+            "defaultMessage": "{count, plural, =0 {😭} one {# kitten} other {# kittens}}",
+            "description": "Counts kittens",
+            "id": "app.home.kittens",
+          },
+          {
+            "defaultMessage": "   Some whitespace   ",
+            "description": "Whitespace",
+            "id": "trailing.ws",
+          },
+          {
+            "defaultMessage": "A quoted value ''{value}'",
+            "description": "Escaped apostrophe",
+            "id": "escaped.apostrophe",
+          },
+          {
+            "defaultMessage": "this is     a message",
+            "description": "this is     a     description",
+            "id": "newline",
+          },
+          {
+            "defaultMessage": "this is
+    a message",
+            "description": "this is
+    a
+    description",
+            "id": "linebreak",
+          },
+          {
+            "defaultMessage": "this is
+        a message",
+            "id": "templateLinebreak",
+          },
+          {
+            "defaultMessage": "formatted message
+    						with linebreak",
+            "description": "foo
+    						bar",
+            "id": "inline.linebreak",
+          },
+        ],
+        "meta": {
+          "project": "amazing",
+        },
+      },
+    }
+  `);
 });
 
 test("extractSourceLocation", function () {
@@ -741,25 +1219,26 @@ test("extractSourceLocation", function () {
     }"
   `);
 
-  expect(data.messages).toMatchInlineSnapshot(`
-    [
-      {
-        "defaultMessage": "Hello World!",
-        "id": "foo.bar.baz",
-        "loc": {
-          "end": {
-            "col": 78,
-            "line": 6,
-          },
-          "file": "${getFixturePath('extractSourceLocation.js')}",
-          "start": {
-            "col": 11,
-            "line": 6,
-          },
+  const dataSnapshot = `
+  [
+    {
+      "defaultMessage": "Hello World!",
+      "id": "foo.bar.baz",
+      "loc": {
+        "end": {
+          "col": 78,
+          "line": 6,
+        },
+        "file": "${getFixturePath("extractSourceLocation.js")}",
+        "start": {
+          "col": 11,
+          "line": 6,
         },
       },
-    ]
-  `);
+    },
+  ]
+`;
+  expect(data.messages).toMatchInlineSnapshot(dataSnapshot);
   expect(data.meta).toMatchInlineSnapshot(`{}`);
   /*
   const filePath = path.join(__dirname, "fixtures", "extractSourceLocation.js");
