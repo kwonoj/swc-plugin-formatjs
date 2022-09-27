@@ -285,9 +285,61 @@ test.skip("extractFromFormatMessageCall", function () {
 test.skip("extractFromFormatMessageCallStateless", function () {
   transformAndCheck("extractFromFormatMessageCallStateless");
 });
-test.skip("formatMessageCall", function () {
-  transformAndCheck("formatMessageCall");
+
+test("formatMessageCall", function () {
+  expect(transformAndCheck("formatMessageCall")).toMatchInlineSnapshot(`
+    {
+      "code": "import React, { Component } from 'react';
+    import { injectIntl, FormattedMessage } from 'react-intl';
+    const objectPointer = {
+        id: 'foo.bar.invalid',
+        defaultMessage: 'This cannot be extracted',
+        description: 'the plugin only supports inline objects'
+    };
+    class Foo extends Component {
+        render() {
+            const msgs = {
+                baz: this.props.intl.formatMessage({
+                    id: 'foo.bar.baz',
+                    defaultMessage: "Hello World!"
+                }),
+                biff: this.props.intl.formatMessage({
+                    id: 'foo.bar.biff',
+                    defaultMessage: "Hello Nurse!"
+                }),
+                invalid: this.props.intl.formatMessage(objectPointer)
+            };
+            return /*#__PURE__*/ React.createElement("div", null, /*#__PURE__*/ React.createElement("h1", null, msgs.header), /*#__PURE__*/ React.createElement("p", null, msgs.content), /*#__PURE__*/ React.createElement("span", null, /*#__PURE__*/ React.createElement(FormattedMessage, {
+                id: "foo",
+                defaultMessage: "bar"
+            })));
+        }
+    }
+    export default injectIntl(Foo)",
+      "data": {
+        "messages": [
+          {
+            "defaultMessage": "Hello World!",
+            "description": "The default message",
+            "id": "foo.bar.baz",
+          },
+          {
+            "defaultMessage": "Hello Nurse!",
+            "description": "Another message",
+            "id": "foo.bar.biff",
+          },
+          {
+            "defaultMessage": "bar",
+            "description": "baz",
+            "id": "foo",
+          },
+        ],
+        "meta": {},
+      },
+    }
+  `);
 });
+
 test("FormattedMessage", function () {
   expect(transformAndCheck("FormattedMessage")).toMatchInlineSnapshot(`
     {

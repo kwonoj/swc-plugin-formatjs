@@ -479,61 +479,6 @@ Array [
 
 exports[`extractSourceLocation 3`] = `Object {}`;
 
-exports[`formatMessageCall 1`] = `
-Object {
-  "code": "import React, { Component } from 'react';
-import { injectIntl, FormattedMessage } from 'react-intl';
-var objectPointer = {
-  id: 'foo.bar.invalid',
-  defaultMessage: 'This cannot be extracted',
-  description: 'the plugin only supports inline objects'
-};
-
-class Foo extends Component {
-  render() {
-    var msgs = {
-      baz: this.props.intl.formatMessage({
-        id: \\"foo.bar.baz\\",
-        defaultMessage: \\"Hello World!\\"
-      }),
-      biff: this.props.intl.formatMessage({
-        id: \\"foo.bar.biff\\",
-        defaultMessage: \\"Hello Nurse!\\"
-      }),
-      invalid: this.props.intl.formatMessage(objectPointer)
-    };
-    return /*#__PURE__*/React.createElement(\\"div\\", null, /*#__PURE__*/React.createElement(\\"h1\\", null, msgs.header), /*#__PURE__*/React.createElement(\\"p\\", null, msgs.content), /*#__PURE__*/React.createElement(\\"span\\", null, /*#__PURE__*/React.createElement(FormattedMessage, {
-      id: \\"foo\\",
-      defaultMessage: \\"bar\\"
-    })));
-  }
-
-}
-
-export default injectIntl(Foo);",
-  "data": Object {
-    "messages": Array [
-      Object {
-        "defaultMessage": "Hello World!",
-        "description": "The default message",
-        "id": "foo.bar.baz",
-      },
-      Object {
-        "defaultMessage": "Hello Nurse!",
-        "description": "Another message",
-        "id": "foo.bar.biff",
-      },
-      Object {
-        "defaultMessage": "bar",
-        "description": "baz",
-        "id": "foo",
-      },
-    ],
-    "meta": Object {},
-  },
-}
-`;
-
 exports[`idInterpolationPattern 1`] = `
 Object {
   "code": "import React, { Component } from 'react';
