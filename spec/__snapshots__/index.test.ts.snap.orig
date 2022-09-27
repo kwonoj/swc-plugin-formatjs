@@ -81,58 +81,6 @@ function _error() {
 }
 `;
 
-exports[`additionalFunctionNames 1`] = `
-Object {
-  "code": "// @react-intl project:foo
-import React, { Component } from 'react';
-
-function CustomMessage() {}
-
-export default class Foo extends Component {
-  render() {
-    t({
-      id: \\"mfl9RV\\",
-      defaultMessage: \\"t\\"
-    });
-    return /*#__PURE__*/React.createElement(CustomMessage, {
-      id: formatMessage({
-        id: \\"9/u6bg\\",
-        defaultMessage: \\"foo\\"
-      }),
-      description: $formatMessage({
-        id: \\"3jMyCE\\",
-        defaultMessage: \\"foo2\\"
-      }),
-      defaultMessage: \\"Hello World!\\"
-    });
-  }
-
-}",
-  "data": Object {
-    "messages": Array [
-      Object {
-        "defaultMessage": "t",
-        "description": undefined,
-        "id": "mfl9RV",
-      },
-      Object {
-        "defaultMessage": "foo",
-        "description": undefined,
-        "id": "9/u6bg",
-      },
-      Object {
-        "defaultMessage": "foo2",
-        "description": undefined,
-        "id": "3jMyCE",
-      },
-    ],
-    "meta": Object {
-      "project": "foo",
-    },
-  },
-}
-`;
-
 exports[`ast 1`] = `
 Object {
   "code": "import React, { Component } from 'react';

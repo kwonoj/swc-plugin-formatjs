@@ -40,10 +40,56 @@ test("additionalComponentNames", function () {
   `);
 });
 
-test.skip("additionalFunctionNames", function () {
-  transformAndCheck("additionalFunctionNames", {
-    additionalFunctionNames: ["t"],
-  });
+test("additionalFunctionNames", function () {
+  expect(
+    transformAndCheck("additionalFunctionNames", {
+      additionalFunctionNames: ["t"],
+    })
+  ).toMatchInlineSnapshot(`
+    {
+      "code": "// @react-intl project:foo
+    import React, { Component } from 'react';
+    function CustomMessage() {}
+    export default class Foo extends Component {
+        render() {
+            t({
+                id: "mfl9RV",
+                defaultMessage: "t"
+            });
+            return /*#__PURE__*/ React.createElement(CustomMessage, {
+                id: formatMessage({
+                    id: "9/u6bg",
+                    defaultMessage: "foo"
+                }),
+                description: $formatMessage({
+                    id: "3jMyCE",
+                    defaultMessage: "foo2"
+                }),
+                defaultMessage: "Hello World!"
+            });
+        }
+    }",
+      "data": {
+        "messages": [
+          {
+            "defaultMessage": "t",
+            "id": "mfl9RV",
+          },
+          {
+            "defaultMessage": "foo",
+            "id": "9/u6bg",
+          },
+          {
+            "defaultMessage": "foo2",
+            "id": "3jMyCE",
+          },
+        ],
+        "meta": {
+          "project": "foo",
+        },
+      },
+    }
+  `);
 });
 
 test.skip("ast", function () {
