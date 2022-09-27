@@ -92,10 +92,91 @@ test("additionalFunctionNames", function () {
   `);
 });
 
-test.skip("ast", function () {
-  transformAndCheck("ast", {
-    ast: true,
-  });
+test("ast", function () {
+  expect(
+    transformAndCheck("ast", {
+      ast: true,
+    })
+  ).toMatchInlineSnapshot(`
+    {
+      "code": "import React, { Component } from 'react';
+    import { FormattedMessage, defineMessage, defineMessages } from 'react-intl';
+    defineMessage({
+        id: 'defineMessage',
+        defaultMessage: '[{"type":0,"value":"this is a "},{"type":3,"value":"dt","style":"full"}]'
+    });
+    defineMessages({
+        foo: {
+            id: 'defineMessages1',
+            defaultMessage: '[{"type":0,"value":"this is a "},{"type":4,"value":"dt","style":"full"}]'
+        },
+        bar: {
+            id: 'defineMessages2',
+            defaultMessage: '[{"type":0,"value":"this is a "},{"type":2,"value":"dt"}]'
+        },
+        baz: {
+            id: 'compiled',
+            defaultMessage: [
+                {
+                    type: 0,
+                    value: 'asd'
+                }
+            ]
+        }
+    });
+    export default class Foo extends Component {
+        render() {
+            Intl.formatMessage({
+                id: 'intl.formatMessage',
+                defaultMessage: '[{"type":0,"value":"foo "},{"type":6,"value":"s","options":{"one":{"value":[{"type":0,"value":"1"}]},"other":{"value":[{"type":0,"value":"2"}]}},"offset":0,"pluralType":"cardinal"}]'
+            });
+            return /*#__PURE__*/ React.createElement(React.Fragment, null, /*#__PURE__*/ React.createElement(FormattedMessage, {
+                id: "foo.bar.baz",
+                defaultMessage: "Hello World!"
+            }), /*#__PURE__*/ React.createElement(FormattedMessage, {
+                id: "compiled2",
+                defaultMessage: [
+                    {
+                        type: 0,
+                        value: 'compiled comp'
+                    }
+                ]
+            }));
+        }
+    }",
+      "data": {
+        "messages": [
+          {
+            "defaultMessage": "this is a {dt, date, full}",
+            "id": "defineMessage",
+          },
+          {
+            "defaultMessage": "this is a {dt, time, full}",
+            "id": "defineMessages1",
+          },
+          {
+            "defaultMessage": "this is a {dt, number}",
+            "id": "defineMessages2",
+          },
+          {
+            "defaultMessage": "foo {s, plural, one{1} other{2}}",
+            "id": "intl.formatMessage",
+          },
+          {
+            "defaultMessage": "Hello World!",
+            "description": "The default message.",
+            "id": "foo.bar.baz",
+          },
+          {
+            "defaultMessage": "",
+            "description": "The default message.",
+            "id": "compiled2",
+          },
+        ],
+        "meta": {},
+      },
+    }
+  `);
 });
 
 test("defineMessage", function () {
