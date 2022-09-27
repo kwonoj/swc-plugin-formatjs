@@ -1,9 +1,10 @@
 [package]
-edition = "2021"
-name    = "icu-messageformat-parser"
-version = "0.0.1"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "ICU MessageFormat Parser"
+edition     = "2021"
+license     = "MIT"
+name        = "icu-messageformat-parser"
+repository  = "https://github.com/kwonoj/swc-plugin-formatjs"
+version     = "0.0.1"
 
 [features]
 utf16 = ["widestring"]

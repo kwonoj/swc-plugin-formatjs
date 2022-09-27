@@ -11,7 +11,9 @@ version     = "0.0.1"
 crate-type = ["cdylib"]
 
 [dependencies]
-serde                = "1"
-serde_json           = "1"
-swc-formatjs-visitor = { path = "../swc-formatjs-visitor", version = "0.0.1", features = ["plugin"] }
-swc_core             = { version = "0.23.13", features = ["plugin_transform"] }
+serde = "1"
+serde_json = "1"
+swc-formatjs-visitor = { path = "../swc-formatjs-visitor", version = "0.0.1", features = [
+  "plugin",
+] }
+swc_core = { version = "0.23.13", features = ["plugin_transform"] }
