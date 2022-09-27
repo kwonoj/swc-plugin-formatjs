@@ -630,11 +630,76 @@ test.skip("overrideIdFn", function () {
     },
   });
 });
-test.skip("removeDefaultMessage", function () {
-  transformAndCheck("removeDefaultMessage", {
-    removeDefaultMessage: true,
-  });
+
+test("removeDefaultMessage", function () {
+  expect(
+    transformAndCheck("removeDefaultMessage", {
+      removeDefaultMessage: true,
+    })
+  ).toMatchInlineSnapshot(`
+    {
+      "code": "import React, { Component } from 'react';
+    import { defineMessages, FormattedMessage } from 'react-intl';
+    defineMessages({
+        foo: {
+            id: 'greeting-user'
+        },
+        foo2: {
+            id: "xoMBqZ"
+        },
+        foo3: {
+            id: "s0FUZ6"
+        }
+    });
+    export default class Foo extends Component {
+        render() {
+            return /*#__PURE__*/ React.createElement(React.Fragment, null, /*#__PURE__*/ React.createElement(FormattedMessage, {
+                id: "greeting-world"
+            }), /*#__PURE__*/ React.createElement(FormattedMessage, {
+                id: "mdcDCs"
+            }), /*#__PURE__*/ React.createElement(FormattedMessage, {
+                id: "xjsqOM"
+            }));
+        }
+    }",
+      "data": {
+        "messages": [
+          {
+            "defaultMessage": "Hello, {name}",
+            "description": "Greeting the user",
+            "id": "greeting-user",
+          },
+          {
+            "defaultMessage": "foo2-msg",
+            "description": "foo2",
+            "id": "xoMBqZ",
+          },
+          {
+            "defaultMessage": "foo3-msg",
+            "id": "s0FUZ6",
+          },
+          {
+            "defaultMessage": "Hello World!",
+            "description": "Greeting to the world",
+            "id": "greeting-world",
+          },
+          {
+            "defaultMessage": "message with desc",
+            "description": "desc with desc",
+            "id": "mdcDCs",
+          },
+          {
+            "defaultMessage": "message only",
+            "id": "xjsqOM",
+          },
+        ],
+        "meta": {},
+      },
+    }
+  `);
 });
+
+// UNSUPPORTED
 test.skip("removeDefaultMessage + overrideIdFn", function () {
   transformAndCheck("removeDefaultMessage", {
     removeDefaultMessage: true,
@@ -651,6 +716,7 @@ test.skip("removeDefaultMessage + overrideIdFn", function () {
     },
   });
 });
+
 test.skip("preserveWhitespace", function () {
   transformAndCheck("preserveWhitespace", {
     preserveWhitespace: true,
