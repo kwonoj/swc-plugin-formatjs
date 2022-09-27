@@ -694,14 +694,83 @@ test("templateLiteral", function () {
   `);
 });
 
+// NOT FULLY IMPLEMENTED
 test.skip("idInterpolationPattern", function () {
   transformAndCheck("idInterpolationPattern", {
     idInterpolationPattern: "[folder].[name].[sha512:contenthash:hex:6]",
   });
 });
 
-test.skip("idInterpolationPattern default", function () {
-  transformAndCheck("idInterpolationPattern");
+test("idInterpolationPattern default", function () {
+  expect(transformAndCheck("idInterpolationPattern")).toMatchInlineSnapshot(`
+    {
+      "code": "function _extends() {
+        _extends = Object.assign || function(target) {
+            for(var i = 1; i < arguments.length; i++){
+                var source = arguments[i];
+                for(var key in source){
+                    if (Object.prototype.hasOwnProperty.call(source, key)) {
+                        target[key] = source[key];
+                    }
+                }
+            }
+            return target;
+        };
+        return _extends.apply(this, arguments);
+    }
+    import React, { Component } from 'react';
+    import { defineMessages, FormattedMessage } from 'react-intl';
+    const msgs = defineMessages({
+        header: {
+            id: "TRRgnX",
+            defaultMessage: "Hello World!"
+        },
+        content: {
+            id: 'foo.bar.biff',
+            defaultMessage: "Hello Nurse!"
+        }
+    });
+    export default class Foo extends Component {
+        render() {
+            return /*#__PURE__*/ React.createElement("div", null, /*#__PURE__*/ React.createElement("h1", null, /*#__PURE__*/ React.createElement(FormattedMessage, _extends({}, msgs.header))), /*#__PURE__*/ React.createElement("p", null, /*#__PURE__*/ React.createElement(FormattedMessage, _extends({}, msgs.content))), /*#__PURE__*/ React.createElement(FormattedMessage, {
+                id: "NqjIBK",
+                defaultMessage: "Hello World!"
+            }), /*#__PURE__*/ React.createElement(FormattedMessage, {
+                id: "XOhkQy",
+                defaultMessage: "NO ID"
+            }));
+        }
+    }",
+      "data": {
+        "messages": [
+          {
+            "defaultMessage": "Hello World!",
+            "description": "The default message",
+            "id": "TRRgnX",
+          },
+          {
+            "defaultMessage": "Hello Nurse!",
+            "description": {
+              "metadata": "Additional metadata content.",
+              "text": "Something for the translator.",
+            },
+            "id": "foo.bar.biff",
+          },
+          {
+            "defaultMessage": "Hello World!",
+            "description": "Something for the translator. Another description",
+            "id": "NqjIBK",
+          },
+          {
+            "defaultMessage": "NO ID",
+            "description": "Something for the translator. Another description",
+            "id": "XOhkQy",
+          },
+        ],
+        "meta": {},
+      },
+    }
+  `);
 });
 
 test("GH #2663_custom_transform", function () {
