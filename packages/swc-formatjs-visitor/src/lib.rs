@@ -574,13 +574,14 @@ fn evaluate_jsx_message_descriptor(
 
         let content = if let Some(description) = &description {
             if let MessageDescriptionValue::Str(description) = description {
-                format!("{}{}", default_message, description)
+                format!("{}#{}", default_message, description)
             } else {
                 default_message.clone()
             }
         } else {
             default_message.clone()
         };
+
         interpolate_name(filename, interpolate_pattern, &content)
     } else {
         id
@@ -617,7 +618,7 @@ fn evaluate_call_expr_message_descriptor(
 
         let content = if let Some(description) = &description {
             if let MessageDescriptionValue::Str(description) = description {
-                format!("{}{}", default_message, description)
+                format!("{}#{}", default_message, description)
             } else {
                 default_message.clone()
             }
@@ -1029,15 +1030,32 @@ impl<C: Clone + Comments, S: SourceMapper> VisitMut for FormatJSVisitor<C, S> {
             source_location,
         );
 
-        let id_attr: Option<&JSXAttr> = None;
+        let id_attr = jsx_opening_elem
+            .attrs
+            .iter()
+            .find(|attr| {
+                match attr {
+                    JSXAttrOrSpread::JSXAttr(attr) => {
+                        if let JSXAttrName::Ident(ident) = &attr.name {
+                            return &*ident.sym == "id";
+                        } else {
+                            false
+                        }
+                    }
+                    _ => false
+                }
+            });
+
         let first_attr = jsx_opening_elem.attrs.first().is_some();
 
         // Do not support overrideIdFn, only support idInterpolatePattern
-        if descriptor.id.is_some() && self.options.id_interpolate_pattern.is_some() {
+        if descriptor.id.is_some() {
             if let Some(id_attr) = id_attr {
-                id_attr.to_owned().value = Some(JSXAttrValue::Lit(Lit::Str(Str::from(
-                    descriptor.id.unwrap(),
-                ))));
+                if let JSXAttrOrSpread::JSXAttr(attr) = id_attr {
+                    attr.to_owned().value = Some(JSXAttrValue::Lit(Lit::Str(Str::from(
+                        descriptor.id.unwrap(),
+                    ))));
+                }
             } else if first_attr {
                 jsx_opening_elem.attrs.insert(
                     0,
