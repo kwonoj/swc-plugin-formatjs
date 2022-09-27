@@ -165,6 +165,10 @@ fn get_jsx_message_descriptor_value(
                         Lit::Str(str) => Some(str.value.to_string()),
                         _ => None,
                     },
+                    Expr::Tpl(tpl) => {
+                        //NOTE: This doesn't fully evaluate templates
+                        Some(tpl.quasis.iter().map(|q| q.cooked.as_ref().map(|v| v.to_string()).unwrap_or("".to_string())).collect::<Vec<String>>().join(""))
+                    },
                     _ => None,
                 },
                 _ => None,
@@ -195,6 +199,10 @@ fn get_call_expr_message_descriptor_value(
             Lit::Str(str) => Some(str.value.to_string()),
             _ => None,
         },
+        Expr::Tpl(tpl) => {
+            //NOTE: This doesn't fully evaluate templates
+            Some(tpl.quasis.iter().map(|q| q.cooked.as_ref().map(|v| v.to_string()).unwrap_or("".to_string())).collect::<Vec<String>>().join(""))
+        }
         _ => None,
     }
 }
