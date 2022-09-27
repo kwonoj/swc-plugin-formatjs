@@ -36,8 +36,7 @@ I have <foo>{numCats, number}</foo> cats.
           "line": 1,
           "column": 30
         }
-      },
-      "style": null
+      }
     },
     {
       "type": 0,

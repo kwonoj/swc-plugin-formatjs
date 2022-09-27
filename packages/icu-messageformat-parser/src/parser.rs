@@ -60,21 +60,21 @@ pub struct ParserOptions {
     /// Should `select`, `selectordinal`, and `plural` arguments always include
     /// the `other` case clause.
     #[serde(default)]
-    requires_other_clause: bool,
+    pub requires_other_clause: bool,
 
     /// Whether to parse number/datetime skeleton
     /// into Intl.NumberFormatOptions and Intl.DateTimeFormatOptions, respectively
     #[serde(default)]
-    should_parse_skeletons: bool,
+    pub should_parse_skeletons: bool,
 
     /// Capture location info in AST
     /// Default is false
     #[serde(default)]
-    capture_location: bool,
+    pub capture_location: bool,
 
     /// Instance of Intl.Locale to resolve locale-dependent skeleton
     #[serde(default)]
-    locale: Option<String>,
+    pub locale: Option<String>,
 }
 
 impl ParserOptions {

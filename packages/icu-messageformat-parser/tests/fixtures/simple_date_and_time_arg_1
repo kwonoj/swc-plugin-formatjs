@@ -34,8 +34,7 @@ Your meeting is scheduled for the {dateVal, date} at {timeVal, time}
           "line": 1,
           "column": 50
         }
-      },
-      "style": null
+      }
     },
     {
       "type": 0,
@@ -67,8 +66,7 @@ Your meeting is scheduled for the {dateVal, date} at {timeVal, time}
           "line": 1,
           "column": 69
         }
-      },
-      "style": null
+      }
     }
   ],
   "err": null
