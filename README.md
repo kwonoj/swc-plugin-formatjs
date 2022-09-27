@@ -1,8 +1,8 @@
 # SWC-plugin-formatjs
 
-`SWC-plugin-vanilla-formatjs`
+`SWC-plugin-formatjs`
 
-`swc-plugin-vanilla-formatjs` is a port of `babel-plugin-formatjs` for the SWC. Transform can be performed either via SWC's wasm-based plugin, or using custom passes in rust side transform chains.
+`swc-plugin-formatjs` is a port of `babel-plugin-formatjs` for the SWC. Transform can be performed either via SWC's wasm-based plugin, or using custom passes in rust side transform chains.
 
 ## What does compatible exactly means?
 
@@ -23,7 +23,7 @@ Given SWC's plugin interface itself is under experimental stage does not gaurant
 First, install package via npm:
 
 ```
-npm install --save-dev swc-plugin-vanilla-formatjs
+npm install --save-dev swc-plugin-formatjs
 ```
 
 Then add plugin into swc's configuration:
@@ -44,7 +44,7 @@ jsc: {
   ...
   experimental: {
     plugins: [
-      ["SWC-plugin-vanilla-formatjs", {
+      ["SWC-plugin-formatjs", {
         //pluginOptions
       }]
     ]
