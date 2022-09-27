@@ -89,17 +89,33 @@ impl fmt::Display for ErrorKind {
             ErrorKind::InvalidDateTimeSkeleton => write!(f, "INVALID_DATE_TIME_SKELETON"),
             ErrorKind::ExpectNumberSkeleton => write!(f, "EXPECT_NUMBER_SKELETON"),
             ErrorKind::ExpectDateTimeSkeleton => write!(f, "EXPECT_DATE_TIME_SKELETON"),
-            ErrorKind::UnclosedQuoteInArgumentStyle => write!(f, "UNCLOSED_QUOTE_IN_ARGUMENT_STYLE"),
+            ErrorKind::UnclosedQuoteInArgumentStyle => {
+                write!(f, "UNCLOSED_QUOTE_IN_ARGUMENT_STYLE")
+            }
             ErrorKind::ExpectSelectArgumentOptions => write!(f, "EXPECT_SELECT_ARGUMENT_OPTIONS"),
-            ErrorKind::ExpectPluralArgumentOffsetValue => write!(f, "EXPECT_PLURAL_ARGUMENT_OFFSET_VALUE"),
-            ErrorKind::InvalidPluralArgumentOffsetValue => write!(f, "INVALID_PLURAL_ARGUMENT_OFFSET_VALUE"),
+            ErrorKind::ExpectPluralArgumentOffsetValue => {
+                write!(f, "EXPECT_PLURAL_ARGUMENT_OFFSET_VALUE")
+            }
+            ErrorKind::InvalidPluralArgumentOffsetValue => {
+                write!(f, "INVALID_PLURAL_ARGUMENT_OFFSET_VALUE")
+            }
             ErrorKind::ExpectSelectArgumentSelector => write!(f, "EXPECT_SELECT_ARGUMENT_SELECTOR"),
             ErrorKind::ExpectPluralArgumentSelector => write!(f, "EXPECT_PLURAL_ARGUMENT_SELECTOR"),
-            ErrorKind::ExpectSelectArgumentSelectorFragment => write!(f, "EXPECT_SELECT_ARGUMENT_SELECTOR_FRAGMENT"),
-            ErrorKind::ExpectPluralArgumentSelectorFragment => write!(f, "EXPECT_PLURAL_ARGUMENT_SELECTOR_FRAGMENT"),
-            ErrorKind::InvalidPluralArgumentSelector => write!(f, "INVALID_PLURAL_ARGUMENT_SELECTOR"),
-            ErrorKind::DuplicatePluralArgumentSelector => write!(f, "DUPLICATE_PLURAL_ARGUMENT_SELECTOR"),
-            ErrorKind::DuplicateSelectArgumentSelector => write!(f, "DUPLICATE_SELECT_ARGUMENT_SELECTOR"),
+            ErrorKind::ExpectSelectArgumentSelectorFragment => {
+                write!(f, "EXPECT_SELECT_ARGUMENT_SELECTOR_FRAGMENT")
+            }
+            ErrorKind::ExpectPluralArgumentSelectorFragment => {
+                write!(f, "EXPECT_PLURAL_ARGUMENT_SELECTOR_FRAGMENT")
+            }
+            ErrorKind::InvalidPluralArgumentSelector => {
+                write!(f, "INVALID_PLURAL_ARGUMENT_SELECTOR")
+            }
+            ErrorKind::DuplicatePluralArgumentSelector => {
+                write!(f, "DUPLICATE_PLURAL_ARGUMENT_SELECTOR")
+            }
+            ErrorKind::DuplicateSelectArgumentSelector => {
+                write!(f, "DUPLICATE_SELECT_ARGUMENT_SELECTOR")
+            }
             ErrorKind::MissingOtherClause => write!(f, "MISSING_OTHER_CLAUSE"),
             ErrorKind::InvalidTag => write!(f, "INVALID_TAG"),
             ErrorKind::InvalidTagName => write!(f, "INVALID_TAG_NAME"),
@@ -177,7 +193,8 @@ pub struct Error {
     /// span in an error is a valid range into this string.
     pub message: String,
     /// The span of this error.
-    pub location: Span,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub location: Option<Span>,
 }
 
 /// An abstract syntax tree for a ICU message. Adapted from:
@@ -194,38 +211,41 @@ pub enum PluralType {
 #[derive(Clone, Debug, PartialEq)]
 pub enum AstElement<'s> {
     /// Raw text
-    Literal { value: String, span: Span },
+    Literal {
+        value: String,
+        span: Option<Span>,
+    },
     /// Variable w/o any format, e.g `var` in `this is a {var}`
-    Argument { value: String, span: Span },
+    Argument { value: String, span: Option<Span> },
     /// Variable w/ number format
     Number {
         value: String,
-        span: Span,
+        span: Option<Span>,
         style: Option<NumberArgStyle<'s>>,
     },
     /// Variable w/ date format
     Date {
         value: String,
-        span: Span,
+        span: Option<Span>,
         style: Option<DateTimeArgStyle<'s>>,
     },
     /// Variable w/ time format
     Time {
         value: String,
-        span: Span,
+        span: Option<Span>,
         style: Option<DateTimeArgStyle<'s>>,
     },
     /// Variable w/ select format
     Select {
         value: String,
-        span: Span,
+        span: Option<Span>,
         options: PluralOrSelectOptions<'s>,
     },
     /// Variable w/ plural format
     Plural {
         value: String,
         plural_type: PluralType,
-        span: Span,
+        span: Option<Span>,
         // TODO: want to use double here but it does not implement Eq trait.
         offset: i64,
         options: PluralOrSelectOptions<'s>,
@@ -236,7 +256,7 @@ pub enum AstElement<'s> {
     /// XML-like tag
     Tag {
         value: &'s str,
-        span: Span,
+        span: Option<Span>,
         children: Box<Ast<'s>>,
     },
 }
@@ -255,7 +275,9 @@ impl<'s> Serialize for AstElement<'s> {
                 let mut state = serializer.serialize_struct("Literal", 3)?;
                 state.serialize_field("type", &0)?;
                 state.serialize_field("value", value)?;
-                state.serialize_field("location", span)?;
+                if span.is_some() {
+                    state.serialize_field("location", span)?;
+                }
                 state.end()
             }
             AstElement::Argument {
@@ -265,7 +287,9 @@ impl<'s> Serialize for AstElement<'s> {
                 let mut state = serializer.serialize_struct("Argument", 3)?;
                 state.serialize_field("type", &1)?;
                 state.serialize_field("value", value)?;
-                state.serialize_field("location", span)?;
+                if span.is_some() {
+                    state.serialize_field("location", span)?;
+                }
                 state.end()
             }
             AstElement::Number {
@@ -276,8 +300,12 @@ impl<'s> Serialize for AstElement<'s> {
                 let mut state = serializer.serialize_struct("Number", 4)?;
                 state.serialize_field("type", &2)?;
                 state.serialize_field("value", value)?;
-                state.serialize_field("location", span)?;
-                state.serialize_field("style", style)?;
+                if span.is_some() {
+                    state.serialize_field("location", span)?;
+                }
+                if style.is_some() {
+                    state.serialize_field("style", style)?;
+                }
                 state.end()
             }
             AstElement::Date {
@@ -288,8 +316,12 @@ impl<'s> Serialize for AstElement<'s> {
                 let mut state = serializer.serialize_struct("Date", 4)?;
                 state.serialize_field("type", &3)?;
                 state.serialize_field("value", value)?;
-                state.serialize_field("location", span)?;
-                state.serialize_field("style", style)?;
+                if span.is_some() {
+                    state.serialize_field("location", span)?;
+                }
+                if style.is_some() {
+                    state.serialize_field("style", style)?;
+                }
                 state.end()
             }
             AstElement::Time {
@@ -300,8 +332,12 @@ impl<'s> Serialize for AstElement<'s> {
                 let mut state = serializer.serialize_struct("Time", 4)?;
                 state.serialize_field("type", &4)?;
                 state.serialize_field("value", value)?;
-                state.serialize_field("location", span)?;
-                state.serialize_field("style", style)?;
+                if span.is_some() {
+                    state.serialize_field("location", span)?;
+                }
+                if style.is_some() {
+                    state.serialize_field("style", style)?;
+                }
                 state.end()
             }
             AstElement::Select {
@@ -313,7 +349,9 @@ impl<'s> Serialize for AstElement<'s> {
                 state.serialize_field("type", &5)?;
                 state.serialize_field("value", value)?;
                 state.serialize_field("options", options)?;
-                state.serialize_field("location", span)?;
+                if span.is_some() {
+                    state.serialize_field("location", span)?;
+                }
                 state.end()
             }
             AstElement::Plural {
@@ -329,7 +367,9 @@ impl<'s> Serialize for AstElement<'s> {
                 state.serialize_field("options", options)?;
                 state.serialize_field("offset", offset)?;
                 state.serialize_field("pluralType", plural_type)?;
-                state.serialize_field("location", span)?;
+                if span.is_some() {
+                    state.serialize_field("location", span)?;
+                }
                 state.end()
             }
             AstElement::Pound(ref span) => {
@@ -347,7 +387,9 @@ impl<'s> Serialize for AstElement<'s> {
                 state.serialize_field("type", &8)?;
                 state.serialize_field("value", value)?;
                 state.serialize_field("children", children)?;
-                state.serialize_field("location", span)?;
+                if span.is_some() {
+                    state.serialize_field("location", span)?;
+                }
                 state.end()
             }
         }
@@ -396,7 +438,8 @@ pub struct NumberSkeleton<'s> {
     #[serde(rename = "type")]
     pub skeleton_type: SkeletonType,
     pub tokens: Vec<NumberSkeletonToken<'s>>,
-    pub location: Span,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub location: Option<Span>,
     pub parsed_options: JsIntlNumberFormatOptions,
 }
 
@@ -427,7 +470,8 @@ pub struct DateTimeSkeleton {
     #[serde(rename = "type")]
     pub skeleton_type: SkeletonType,
     pub pattern: String,
-    pub location: Span,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub location: Option<Span>,
     pub parsed_options: JsIntlDateTimeFormatOptions,
 }
 
@@ -435,7 +479,8 @@ pub struct DateTimeSkeleton {
 #[serde(rename_all = "camelCase")]
 pub struct PluralOrSelectOption<'s> {
     pub value: Ast<'s>,
-    pub location: Span,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub location: Option<Span>,
 }
 
 #[cfg(test)]
@@ -453,7 +498,7 @@ mod tests {
                     stem: "foo",
                     options: vec!["bar", "baz"]
                 }],
-                location: Span::new(Position::new(0, 1, 1), Position::new(11, 1, 12)),
+                location: Some(Span::new(Position::new(0, 1, 1), Position::new(11, 1, 12))),
                 parsed_options: JsIntlNumberFormatOptions::default(),
             }))
             .unwrap(),
