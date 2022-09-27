@@ -1,9 +1,11 @@
 use std::collections::{HashMap, HashSet};
 
+use base64ct::{Base64, Encoding};
 use icu_messageformat_parser::{Parser, ParserOptions};
 use once_cell::sync::Lazy;
-use regex::Regex as Regexp;
+use regex::{Captures, Regex as Regexp};
 use serde::{ser::SerializeMap, Deserialize, Serialize};
+use sha2::{Digest, Sha512};
 use swc_core::{
     common::{
         comments::{Comment, CommentKind, Comments},
@@ -14,7 +16,7 @@ use swc_core::{
         ast::{
             CallExpr, Callee, Expr, ExprOrSpread, Ident, JSXAttr, JSXAttrName, JSXAttrOrSpread,
             JSXAttrValue, JSXExpr, JSXNamespacedName, JSXOpeningElement, KeyValueProp, Lit,
-            MemberProp, ModuleItem, ObjectLit, Prop, PropName, PropOrSpread, Str,
+            MemberProp, ModuleItem, ObjectLit, Prop, PropName, PropOrSpread, Str, JSXElementName,
         },
         visit::{noop_visit_mut_type, VisitMut, VisitMutWith},
     },
@@ -460,7 +462,9 @@ fn get_call_expr_icu_message_value(
 }
 
 fn interpolate_name(resource_path: &str, name: &str, content: &str) -> Option<String> {
-    let filename = resource_path;
+    let filename = name;
+
+    let content = content;
 
     let ext = "bin";
     let basename = "file";
@@ -500,30 +504,39 @@ fn interpolate_name(resource_path: &str, name: &str, content: &str) -> Option<St
     }
       */
 
-    let url = filename;
+    let mut url = filename.to_string();
+    let r = Regexp::new(r#"\[(?:([^:\]]+):)?(?:hash|contenthash)(?::([a-z]+\d*))?(?::(\d+))?\]"#)
+        .unwrap();
+
+    url = r
+        .replace(url.as_str(), |cap: &Captures| {
+            let hash_type = cap.get(1);
+            let digest_type = cap.get(2);
+            let max_length = cap.get(3);
+
+            // TODO: support hashtype
+            let mut hasher = Sha512::new();
+            hasher.update(content.as_bytes());
+            let hash = hasher.finalize();
+            let base64_hash = Base64::encode_string(&hash);
+
+            if let Some(max_length) = max_length {
+                base64_hash[0..max_length.as_str().parse::<usize>().unwrap()].to_string()
+            } else {
+                base64_hash
+            }
+        })
+        .to_string();
 
     /*
-        if (content) {
-      // Match hash template
-      url = url
-        // `hash` and `contenthash` are same in `loader-utils` context
-        // let's keep `hash` for backward compatibility
-        .replace(
-          /\[(?:([^:\]]+):)?(?:hash|contenthash)(?::([a-z]+\d*))?(?::(\d+))?\]/gi,
-          (_, hashType, digestType, maxLength) =>
-            getHashDigest(content, hashType, digestType, parseInt(maxLength, 10))
-        )
-    }
-
     url = url
       .replace(/\[ext\]/gi, () => ext)
       .replace(/\[name\]/gi, () => basename)
       .replace(/\[path\]/gi, () => directory)
       .replace(/\[folder\]/gi, () => folder)
       .replace(/\[query\]/gi, () => query)
-        */
+    */
 
-    //return url
     Some(url.to_string())
 }
 
@@ -543,7 +556,14 @@ fn evaluate_jsx_message_descriptor(
         get_jsx_message_descriptor_value_maybe_object(&descriptor_path.description, None);
 
     // Note: do not support override fn
-    let id = if id.is_some() && options.id_interpolate_pattern.is_some() && default_message != "" {
+    let id = if id.is_none() && default_message != "" {
+        let interpolate_pattern = if let Some(interpolate_pattern) = &options.id_interpolate_pattern
+        {
+            interpolate_pattern.as_str()
+        } else {
+            "[sha512:contenthash:base64:6]"
+        };
+
         let content = if let Some(description) = &description {
             if let MessageDescriptionValue::Str(description) = description {
                 format!("{}{}", default_message, description)
@@ -553,11 +573,7 @@ fn evaluate_jsx_message_descriptor(
         } else {
             default_message.clone()
         };
-        interpolate_name(
-            filename,
-            &options.id_interpolate_pattern.as_ref().unwrap(),
-            &content,
-        )
+        interpolate_name(filename, interpolate_pattern, &content)
     } else {
         id
     };
@@ -583,7 +599,14 @@ fn evaluate_call_expr_message_descriptor(
     let description =
         get_call_expr_message_descriptor_value_maybe_object(&descriptor_path.description, None);
 
-    let id = if id.is_some() && options.id_interpolate_pattern.is_some() && default_message != "" {
+    let id = if id.is_none() && default_message != "" {
+        let interpolate_pattern = if let Some(interpolate_pattern) = &options.id_interpolate_pattern
+        {
+            interpolate_pattern.as_str()
+        } else {
+            "[sha512:contenthash:base64:6]"
+        };
+
         let content = if let Some(description) = &description {
             if let MessageDescriptionValue::Str(description) = description {
                 format!("{}{}", default_message, description)
@@ -593,11 +616,7 @@ fn evaluate_call_expr_message_descriptor(
         } else {
             default_message.clone()
         };
-        interpolate_name(
-            filename,
-            &options.id_interpolate_pattern.as_ref().unwrap(),
-            &content,
-        )
+        interpolate_name(filename, interpolate_pattern, &content)
     } else {
         id
     };
@@ -615,9 +634,19 @@ fn store_message(
     filename: &str,
     location: Option<(Loc, Loc)>,
 ) {
-    if descriptor.id.is_none() || descriptor.default_message.is_none() {
-        // TODO: should use error emitter
-        panic!("[React Intl] Message Descriptors require an `id` or `defaultMessage`.");
+    if descriptor.id.is_none() && descriptor.default_message.is_none() {
+        #[cfg(feature = "plugin")]
+        let handler = &swc_core::plugin::errors::HANDLER;
+
+        #[cfg(feature = "custom_transform")]
+        let handler = &swc_core::common::errors::HANDLER;
+
+        #[cfg(any(feature = "plugin", feature = "custom_transform"))]
+        handler.with(|handler| {
+            handler
+                .struct_err("[React Intl] Message Descriptors require an `id` or `defaultMessage`.")
+                .emit()
+        });
     }
 
     let source_location = if let Some(location) = location {
@@ -640,7 +669,11 @@ fn store_message(
     };
 
     messages.push(ExtractedMessage {
-        id: descriptor.id.as_ref().expect("Should be available").clone(),
+        id: descriptor
+            .id
+            .as_ref()
+            .unwrap_or(&"".to_string())
+            .to_string(),
         default_message: descriptor
             .default_message
             .as_ref()
@@ -756,6 +789,7 @@ impl<C: Clone + Comments, S: SourceMapper> FormatJSVisitor<C, S> {
         function_names.insert("$formatMessage".to_string());
 
         let mut component_names: HashSet<String> = Default::default();
+        component_names.insert("FormattedMessage".to_string());
         plugin_options
             .additional_component_names
             .iter()
@@ -886,7 +920,11 @@ impl<C: Clone + Comments, S: SourceMapper> FormatJSVisitor<C, S> {
                                     match key {
                                         "description" => {
                                             // remove description
-                                            self.comments.take_leading(prop.span().lo);
+                                            if descriptor.description.is_some() {
+                                                self.comments.take_leading(prop.span().lo);
+                                            } else {
+                                                props.push(PropOrSpread::Prop(prop));
+                                            }
                                         }
                                         // Pre-parse or remove defaultMessage
                                         "defaultMessage" => {
@@ -940,7 +978,15 @@ impl<C: Clone + Comments, S: SourceMapper> VisitMut for FormatJSVisitor<C, S> {
     noop_visit_mut_type!();
 
     fn visit_mut_jsx_opening_element(&mut self, jsx_opening_elem: &mut JSXOpeningElement) {
+        jsx_opening_elem.visit_mut_children_with(self);
+
         let name = &jsx_opening_elem.name;
+
+        if let JSXElementName::Ident(ident) = name {
+            if !self.component_names.contains(&*ident.sym) {
+                return;
+            }
+        }
 
         let descriptor_path = create_message_descriptor_from_jsx_attr(&jsx_opening_elem.attrs);
 
@@ -978,6 +1024,26 @@ impl<C: Clone + Comments, S: SourceMapper> VisitMut for FormatJSVisitor<C, S> {
         let id_attr: Option<&JSXAttr> = None;
         let first_attr = jsx_opening_elem.attrs.first().is_some();
 
+        // Do not support overrideIdFn, only support idInterpolatePattern
+        if descriptor.id.is_some() && self.options.id_interpolate_pattern.is_some() {
+            if let Some(id_attr) = id_attr {
+                id_attr.to_owned().value = Some(JSXAttrValue::Lit(Lit::Str(Str::from(
+                    descriptor.id.unwrap(),
+                ))));
+            } else if first_attr {
+                jsx_opening_elem.attrs.insert(
+                    0,
+                    JSXAttrOrSpread::JSXAttr(JSXAttr {
+                        span: DUMMY_SP,
+                        name: JSXAttrName::Ident(Ident::new("id".into(), DUMMY_SP)),
+                        value: Some(JSXAttrValue::Lit(Lit::Str(Str::from(
+                            descriptor.id.unwrap(),
+                        )))),
+                    }),
+                )
+            }
+        }
+
         let mut attrs = vec![];
         for attr in jsx_opening_elem.attrs.drain(..) {
             match attr {
@@ -986,7 +1052,11 @@ impl<C: Clone + Comments, S: SourceMapper> VisitMut for FormatJSVisitor<C, S> {
                     match key {
                         "description" => {
                             // remove description
-                            self.comments.take_leading(attr.span().lo);
+                            if descriptor.description.is_some() {
+                                self.comments.take_leading(attr.span.lo);
+                            } else {
+                                attrs.push(JSXAttrOrSpread::JSXAttr(attr));
+                            }
                         }
                         "defaultMessage" => {
                             if self.options.remove_default_message {
@@ -1018,26 +1088,6 @@ impl<C: Clone + Comments, S: SourceMapper> VisitMut for FormatJSVisitor<C, S> {
         }
 
         jsx_opening_elem.attrs = attrs.to_vec();
-
-        // Do not support overrideIdFn, only support idInterpolatePattern
-        if descriptor.id.is_some() && self.options.id_interpolate_pattern.is_some() {
-            if let Some(id_attr) = id_attr {
-                id_attr.to_owned().value = Some(JSXAttrValue::Lit(Lit::Str(Str::from(
-                    descriptor.id.unwrap(),
-                ))));
-            } else if first_attr {
-                jsx_opening_elem.attrs.insert(
-                    0,
-                    JSXAttrOrSpread::JSXAttr(JSXAttr {
-                        span: DUMMY_SP,
-                        name: JSXAttrName::Ident(Ident::new("id".into(), DUMMY_SP)),
-                        value: Some(JSXAttrValue::Lit(Lit::Str(Str::from(
-                            descriptor.id.unwrap(),
-                        )))),
-                    }),
-                )
-            }
-        }
 
         // tag_as_extracted();
     }
