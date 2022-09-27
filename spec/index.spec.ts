@@ -325,11 +325,133 @@ test("empty", function () {
     }
   `);
 });
-test.skip("extractFromFormatMessageCall", function () {
-  transformAndCheck("extractFromFormatMessageCall");
+
+test("extractFromFormatMessageCall", function () {
+  expect(transformAndCheck("extractFromFormatMessageCall"))
+    .toMatchInlineSnapshot(`
+    {
+      "code": "import { FormattedMessage, injectIntl } from 'react-intl';
+    import React, { Component } from 'react';
+    const objectPointer = {
+        id: 'foo.bar.invalid',
+        defaultMessage: 'This cannot be extracted',
+        description: 'the plugin only supports inline objects'
+    };
+    class Foo extends Component {
+        render() {
+            const { intl  } = this.props;
+            const { intl: { formatMessage  } ,  } = this.props;
+            const msgs = {
+                baz: this.props.intl.formatMessage({
+                    id: 'foo.bar.baz',
+                    defaultMessage: "Hello World!"
+                }),
+                biff: intl.formatMessage({
+                    id: 'foo.bar.biff',
+                    defaultMessage: "Hello Nurse!"
+                }),
+                qux: formatMessage({
+                    id: 'foo.bar.qux',
+                    defaultMessage: "Hello Stranger!"
+                }),
+                invalid: this.props.intl.formatMessage(objectPointer)
+            };
+            return /*#__PURE__*/ React.createElement("div", null, /*#__PURE__*/ React.createElement("h1", null, msgs.header), /*#__PURE__*/ React.createElement("p", null, msgs.content), /*#__PURE__*/ React.createElement("span", null, /*#__PURE__*/ React.createElement(FormattedMessage, {
+                id: "foo",
+                defaultMessage: "bar"
+            })));
+        }
+    }
+    export default injectIntl(Foo)",
+      "data": {
+        "messages": [
+          {
+            "defaultMessage": "Hello World!",
+            "description": "The default message",
+            "id": "foo.bar.baz",
+          },
+          {
+            "defaultMessage": "Hello Nurse!",
+            "description": "Another message",
+            "id": "foo.bar.biff",
+          },
+          {
+            "defaultMessage": "Hello Stranger!",
+            "description": "A different message",
+            "id": "foo.bar.qux",
+          },
+          {
+            "defaultMessage": "bar",
+            "description": "baz",
+            "id": "foo",
+          },
+        ],
+        "meta": {},
+      },
+    }
+  `);
 });
-test.skip("extractFromFormatMessageCallStateless", function () {
-  transformAndCheck("extractFromFormatMessageCallStateless");
+
+test("extractFromFormatMessageCallStateless", function () {
+  expect(transformAndCheck("extractFromFormatMessageCallStateless"))
+    .toMatchInlineSnapshot(`
+    {
+      "code": "import { FormattedMessage, injectIntl, useIntl } from 'react-intl';
+    import React from 'react';
+    function myFunction(param1, { formatMessage , formatDate  }) {
+        return formatMessage({
+            id: 'inline1',
+            defaultMessage: "Hello params!"
+        }) + formatDate(new Date());
+    }
+    const child = myFunction(filterable, intl);
+    function SFC() {
+        const { formatMessage  } = useIntl();
+        return formatMessage({
+            id: 'hook',
+            defaultMessage: "hook <b>foo</b>"
+        });
+    }
+    const Foo = ({ intl: { formatMessage  }  })=>{
+        const msgs = {
+            qux: formatMessage({
+                id: 'foo.bar.quux',
+                defaultMessage: "Hello <b>Stateless!</b>"
+            })
+        };
+        return /*#__PURE__*/ React.createElement("div", null, /*#__PURE__*/ React.createElement("h1", null, msgs.header), /*#__PURE__*/ React.createElement("p", null, msgs.content), /*#__PURE__*/ React.createElement("span", null, /*#__PURE__*/ React.createElement(FormattedMessage, {
+            id: "foo",
+            defaultMessage: "bar"
+        })));
+    };
+    export default injectIntl(Foo)",
+      "data": {
+        "messages": [
+          {
+            "defaultMessage": "Hello params!",
+            "description": "A stateless message",
+            "id": "inline1",
+          },
+          {
+            "defaultMessage": "hook <b>foo</b>",
+            "description": "hook",
+            "id": "hook",
+          },
+          {
+            "defaultMessage": "Hello <b>Stateless!</b>",
+            "description": "A stateless message",
+            "id": "foo.bar.quux",
+          },
+          {
+            "defaultMessage": "bar",
+            "description": "baz",
+            "id": "foo",
+          },
+        ],
+        "meta": {},
+      },
+    }
+  `);
 });
 
 test("formatMessageCall", function () {
@@ -415,14 +537,15 @@ test("FormattedMessage", function () {
 test.skip("inline", function () {
   transformAndCheck("inline");
 });
-test.skip("templateLiteral", function () {
+
+test("templateLiteral", function () {
   expect(transformAndCheck("templateLiteral")).toMatchInlineSnapshot(`
     {
       "code": "import React, { Component } from 'react';
     import { FormattedMessage, defineMessage } from 'react-intl';
     defineMessage({
         id: \`template\`,
-        defaultMessage: \`should remove newline and extra spaces\`
+        defaultMessage: "should remove newline and extra spaces"
     });
     export default class Foo extends Component {
         render() {
@@ -433,15 +556,17 @@ test.skip("templateLiteral", function () {
         }
     }",
       "data": {
-        "messages": [{
-          "defaultMessage": "should remove newline and extra spaces",
-          "description": undefined,
-          "id": "template",
-        }, {
-          "defaultMessage": "Hello World!",
-          "description": "The default message.",
-          "id": "foo.bar.baz",
-        }],
+        "messages": [
+          {
+            "defaultMessage": "should remove newline and extra spaces",
+            "id": "template",
+          },
+          {
+            "defaultMessage": "Hello World!",
+            "description": "The default message.",
+            "id": "foo.bar.baz",
+          },
+        ],
         "meta": {},
       },
     }
