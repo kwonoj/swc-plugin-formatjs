@@ -1,7 +1,7 @@
 {
   "name": "swc-plugin-formatjs",
   "version": "0.0.1",
-  "description": "",
+  "description": "SWC plugin for formatjs",
   "main": "./target/wasm32-wasi/release/swc_plugin_formatjs.wasm",
   "napi": {
     "name": "swc",
