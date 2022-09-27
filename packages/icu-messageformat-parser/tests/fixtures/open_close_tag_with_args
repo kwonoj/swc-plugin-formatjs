@@ -88,8 +88,7 @@ I <b>have</b> <foo>{numCats, number} some string {placeholder}</foo> cats.
               "line": 1,
               "column": 37
             }
-          },
-          "style": null
+          }
         },
         {
           "type": 0,

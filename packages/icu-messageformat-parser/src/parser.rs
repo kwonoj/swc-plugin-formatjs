@@ -60,21 +60,39 @@ pub struct ParserOptions {
     /// Should `select`, `selectordinal`, and `plural` arguments always include
     /// the `other` case clause.
     #[serde(default)]
-    requires_other_clause: bool,
+    pub requires_other_clause: bool,
 
     /// Whether to parse number/datetime skeleton
     /// into Intl.NumberFormatOptions and Intl.DateTimeFormatOptions, respectively
     #[serde(default)]
-    should_parse_skeletons: bool,
+    pub should_parse_skeletons: bool,
 
     /// Capture location info in AST
     /// Default is false
     #[serde(default)]
-    capture_location: bool,
+    pub capture_location: bool,
 
     /// Instance of Intl.Locale to resolve locale-dependent skeleton
     #[serde(default)]
-    locale: Option<String>,
+    pub locale: Option<String>,
+}
+
+impl ParserOptions {
+    pub fn new(
+        ignore_tag: bool,
+        requires_other_clause: bool,
+        should_parse_skeletons: bool,
+        capture_location: bool,
+        locale: Option<String>,
+    ) -> Self {
+        ParserOptions {
+            ignore_tag,
+            requires_other_clause,
+            should_parse_skeletons,
+            capture_location,
+            locale,
+        }
+    }
 }
 
 fn is_whitespace(ch: char) -> bool {
@@ -741,7 +759,11 @@ impl<'s> Parser<'s> {
             // Self closing tag
             Ok(AstElement::Literal {
                 value: format!("<{}/>", tag_name),
-                span: Span::new(start_position, self.position()),
+                span: if self.options.capture_location {
+                    Some(Span::new(start_position, self.position()))
+                } else {
+                    None
+                },
             })
         } else if self.bump_if(">") {
             let children = self.parse_message(nesting_level + 1, parent_arg_type, true)?;
@@ -774,7 +796,11 @@ impl<'s> Parser<'s> {
 
                 Ok(AstElement::Tag {
                     value: tag_name,
-                    span: Span::new(start_position, self.position()),
+                    span: if self.options.capture_location {
+                        Some(Span::new(start_position, self.position()))
+                    } else {
+                        None
+                    },
                     children: Box::new(children),
                 })
             } else {
@@ -821,7 +847,14 @@ impl<'s> Parser<'s> {
         }
 
         let span = Span::new(start, self.position());
-        Ok(AstElement::Literal { span, value })
+        Ok(AstElement::Literal {
+            span: if self.options.capture_location {
+                Some(span)
+            } else {
+                None
+            },
+            value,
+        })
     }
 
     /// Starting with ICU 4.8, an ASCII apostrophe only starts quoted text if it immediately precedes
@@ -950,7 +983,11 @@ impl<'s> Parser<'s> {
                 Ok(AstElement::Argument {
                     // value does not include the opening and closing braces.
                     value,
-                    span: Span::new(opening_brace_position, self.position()),
+                    span: if self.options.capture_location {
+                        Some(Span::new(opening_brace_position, self.position()))
+                    } else {
+                        None
+                    },
                 })
             }
 
@@ -1051,12 +1088,17 @@ impl<'s> Parser<'s> {
                                     skeleton,
                                     style_span,
                                     self.options.should_parse_skeletons,
+                                    self.options.capture_location,
                                 )
                                 .map_err(|kind| self.error(kind, style_span))?;
 
                                 AstElement::Number {
                                     value,
-                                    span,
+                                    span: if self.options.capture_location {
+                                        Some(span)
+                                    } else {
+                                        None
+                                    },
                                     style: Some(NumberArgStyle::Skeleton(skeleton)),
                                 }
                             }
@@ -1080,13 +1122,33 @@ impl<'s> Parser<'s> {
                                 let style = Some(DateTimeArgStyle::Skeleton(DateTimeSkeleton {
                                     skeleton_type: SkeletonType::DateTime,
                                     pattern,
-                                    location: style_span,
+                                    location: if self.options.capture_location {
+                                        Some(style_span)
+                                    } else {
+                                        None
+                                    },
                                     parsed_options,
                                 }));
                                 if arg_type == "date" {
-                                    AstElement::Date { value, span, style }
+                                    AstElement::Date {
+                                        value,
+                                        span: if self.options.capture_location {
+                                            Some(span)
+                                        } else {
+                                            None
+                                        },
+                                        style,
+                                    }
                                 } else {
-                                    AstElement::Time { value, span, style }
+                                    AstElement::Time {
+                                        value,
+                                        span: if self.options.capture_location {
+                                            Some(span)
+                                        } else {
+                                            None
+                                        },
+                                        style,
+                                    }
                                 }
                             }
                         })
@@ -1095,17 +1157,29 @@ impl<'s> Parser<'s> {
                         Ok(match arg_type {
                             "number" => AstElement::Number {
                                 value,
-                                span,
+                                span: if self.options.capture_location {
+                                    Some(span)
+                                } else {
+                                    None
+                                },
                                 style: Some(NumberArgStyle::Style(style)),
                             },
                             "date" => AstElement::Date {
                                 value,
-                                span,
+                                span: if self.options.capture_location {
+                                    Some(span)
+                                } else {
+                                    None
+                                },
                                 style: Some(DateTimeArgStyle::Style(style)),
                             },
                             _ => AstElement::Time {
                                 value,
-                                span,
+                                span: if self.options.capture_location {
+                                    Some(span)
+                                } else {
+                                    None
+                                },
                                 style: Some(DateTimeArgStyle::Style(style)),
                             },
                         })
@@ -1115,17 +1189,29 @@ impl<'s> Parser<'s> {
                     Ok(match arg_type {
                         "number" => AstElement::Number {
                             value,
-                            span,
+                            span: if self.options.capture_location {
+                                Some(span)
+                            } else {
+                                None
+                            },
                             style: None,
                         },
                         "date" => AstElement::Date {
                             value,
-                            span,
+                            span: if self.options.capture_location {
+                                Some(span)
+                            } else {
+                                None
+                            },
                             style: None,
                         },
                         _ => AstElement::Time {
                             value,
-                            span,
+                            span: if self.options.capture_location {
+                                Some(span)
+                            } else {
+                                None
+                            },
                             style: None,
                         },
                     })
@@ -1199,12 +1285,20 @@ impl<'s> Parser<'s> {
                 match arg_type {
                     "select" => Ok(AstElement::Select {
                         value,
-                        span,
+                        span: if self.options.capture_location {
+                            Some(span)
+                        } else {
+                            None
+                        },
                         options,
                     }),
                     _ => Ok(AstElement::Plural {
                         value,
-                        span,
+                        span: if self.options.capture_location {
+                            Some(span)
+                        } else {
+                            None
+                        },
                         options,
                         offset: plural_offset,
                         plural_type: if arg_type == "plural" {
@@ -1315,7 +1409,11 @@ impl<'s> Parser<'s> {
                 selector,
                 PluralOrSelectOption {
                     value: fragment,
-                    location: Span::new(opening_brace_position, self.position()),
+                    location: if self.options.capture_location {
+                        Some(Span::new(opening_brace_position, self.position()))
+                    } else {
+                        None
+                    },
                 },
             ));
             // Keep track of the existing selectors
@@ -1473,7 +1571,11 @@ impl<'s> Parser<'s> {
         ast::Error {
             kind,
             message: self.message.to_string(),
-            location: span,
+            location: if self.options.capture_location {
+                Some(span)
+            } else {
+                None
+            },
         }
     }
 
@@ -1639,6 +1741,7 @@ fn parse_number_skeleton_from_string(
     skeleton: &str,
     span: Span,
     should_parse_skeleton: bool,
+    should_capture_location: bool,
 ) -> std::result::Result<NumberSkeleton, ErrorKind> {
     if skeleton.is_empty() {
         return Err(ErrorKind::InvalidNumberSkeleton);
@@ -1681,7 +1784,11 @@ fn parse_number_skeleton_from_string(
         skeleton_type: SkeletonType::Number,
         tokens,
         // TODO: use trimmed end position
-        location: span,
+        location: if should_capture_location {
+            Some(span)
+        } else {
+            None
+        },
         parsed_options,
     })
 }

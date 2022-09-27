@@ -138,9 +138,14 @@ fn read_sections<'a>(file: PathBuf) -> TestFixtureSections {
 #[fixture("tests/fixtures/selectordinal_1")]
 fn parser_tests(file: PathBuf) {
     let fixture_sections = read_sections(file);
+    let options = ParserOptions {
+        capture_location: true,
+        ..fixture_sections.snapshot_options
+    };
+
     let mut parser = Parser::new(
         &fixture_sections.message,
-        &fixture_sections.snapshot_options,
+        &options
     );
 
     let parsed_result = parser.parse();

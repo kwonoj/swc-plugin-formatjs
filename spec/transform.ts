@@ -87,7 +87,7 @@ export const transform = (
         syntax: "ecmascript",
         jsx: true,
       },
-      target: "es2022",
+      target: transformOptions?.jsc?.target ?? "es2022",
       preserveAllComments: true,
     },
     isModule: transformOptions?.isModule ?? true,
@@ -129,9 +129,9 @@ export const transform = (
   return transformSync(code, options);
 };
 
-export function transformAndCheck(fn: string, opts: Options = {}) {
+export function transformAndCheck(fn: string, opts: Options = {}, transformOptions?: any) {
   const filePath = path.join(__dirname, 'fixtures', `${fn}.js`)
-  const { code } = transform(filePath, undefined, {
+  const { code } = transform(filePath, transformOptions, {
     pragma: '@react-intl',
     ...opts,
   })

@@ -34,8 +34,7 @@ I have {numCats, number} cats.
           "line": 1,
           "column": 25
         }
-      },
-      "style": null
+      }
     },
     {
       "type": 0,
