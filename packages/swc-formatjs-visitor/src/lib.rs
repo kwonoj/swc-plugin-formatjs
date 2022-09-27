@@ -15,8 +15,9 @@ use swc_core::{
     ecma::{
         ast::{
             CallExpr, Callee, Expr, ExprOrSpread, Ident, JSXAttr, JSXAttrName, JSXAttrOrSpread,
-            JSXAttrValue, JSXExpr, JSXNamespacedName, JSXOpeningElement, KeyValueProp, Lit,
-            MemberProp, ModuleItem, ObjectLit, Prop, PropName, PropOrSpread, Str, JSXElementName,
+            JSXAttrValue, JSXElementName, JSXExpr, JSXNamespacedName, JSXOpeningElement,
+            KeyValueProp, Lit, MemberProp, ModuleItem, ObjectLit, Prop, PropName, PropOrSpread,
+            Str,
         },
         visit::{noop_visit_mut_type, VisitMut, VisitMutWith},
     },
@@ -167,8 +168,19 @@ fn get_jsx_message_descriptor_value(
                     },
                     Expr::Tpl(tpl) => {
                         //NOTE: This doesn't fully evaluate templates
-                        Some(tpl.quasis.iter().map(|q| q.cooked.as_ref().map(|v| v.to_string()).unwrap_or("".to_string())).collect::<Vec<String>>().join(""))
-                    },
+                        Some(
+                            tpl.quasis
+                                .iter()
+                                .map(|q| {
+                                    q.cooked
+                                        .as_ref()
+                                        .map(|v| v.to_string())
+                                        .unwrap_or("".to_string())
+                                })
+                                .collect::<Vec<String>>()
+                                .join(""),
+                        )
+                    }
                     _ => None,
                 },
                 _ => None,
@@ -201,7 +213,18 @@ fn get_call_expr_message_descriptor_value(
         },
         Expr::Tpl(tpl) => {
             //NOTE: This doesn't fully evaluate templates
-            Some(tpl.quasis.iter().map(|q| q.cooked.as_ref().map(|v| v.to_string()).unwrap_or("".to_string())).collect::<Vec<String>>().join(""))
+            Some(
+                tpl.quasis
+                    .iter()
+                    .map(|q| {
+                        q.cooked
+                            .as_ref()
+                            .map(|v| v.to_string())
+                            .unwrap_or("".to_string())
+                    })
+                    .collect::<Vec<String>>()
+                    .join(""),
+            )
         }
         _ => None,
     }
@@ -940,16 +963,28 @@ impl<C: Clone + Comments, S: SourceMapper> FormatJSVisitor<C, S> {
                                             if self.options.remove_default_message {
                                                 // remove defaultMessage
                                             } else {
-                                                if self.options.ast {
-                                                    /*
-                                                    valueProp.replaceWithSourceString(
-                                                    JSON.stringify(parse(descriptor.defaultMessage))
-                                                    )
-                                                     */
-                                                } else {
-                                                    if let Some(descriptor_default_message) =
-                                                        descriptor.default_message.as_ref()
-                                                    {
+                                                if let Some(descriptor_default_message) =
+                                                    descriptor.default_message.as_ref()
+                                                {
+                                                    if self.options.ast {
+                                                        let mut parser = Parser::new(
+                                                            descriptor_default_message,
+                                                            &ParserOptions::new(
+                                                                false, false, false, false, None,
+                                                            ),
+                                                        );
+                                                        if let Ok(parsed) = parser.parse() {
+                                                            let s = serde_json::to_string(&parsed)
+                                                                .unwrap();
+                                                            keyvalue.value = Box::new(Expr::Lit(
+                                                                Lit::Str(Str {
+                                                                    span: DUMMY_SP,
+                                                                    value: s.into(),
+                                                                    raw: None,
+                                                                }),
+                                                            ));
+                                                        }
+                                                    } else {
                                                         keyvalue.value =
                                                             Box::new(Expr::Lit(Lit::Str(Str {
                                                                 span: DUMMY_SP,
@@ -1030,21 +1065,16 @@ impl<C: Clone + Comments, S: SourceMapper> VisitMut for FormatJSVisitor<C, S> {
             source_location,
         );
 
-        let id_attr = jsx_opening_elem
-            .attrs
-            .iter()
-            .find(|attr| {
-                match attr {
-                    JSXAttrOrSpread::JSXAttr(attr) => {
-                        if let JSXAttrName::Ident(ident) = &attr.name {
-                            return &*ident.sym == "id";
-                        } else {
-                            false
-                        }
-                    }
-                    _ => false
+        let id_attr = jsx_opening_elem.attrs.iter().find(|attr| match attr {
+            JSXAttrOrSpread::JSXAttr(attr) => {
+                if let JSXAttrName::Ident(ident) = &attr.name {
+                    return &*ident.sym == "id";
+                } else {
+                    false
                 }
-            });
+            }
+            _ => false,
+        });
 
         let first_attr = jsx_opening_elem.attrs.first().is_some();
 
